@@ -13,37 +13,36 @@ function createRequest(endpoint, type, body) {
     });
 }
 
-function log(...x) {
-    window.Twitch.ext.rig.log(x);
-    console.log(x);
-}
-
-const makeGetColorRequest = () => createRequest("/color", "GET");
-const makeSetColorRequest = () => createRequest("/color", "POST", '{"newColor": 180}');
+//const makeGetColorRequest = () => createRequest("/color", "GET");
+//const makeSetColorRequest = () => createRequest("/color", "POST", '{"color": 180}');
 
 app.ports.sendHueBroadcast.subscribe(hue => {
-    window.Twitch.ext.send("broadcast", "application/json", hue);
-    log("Sent broadcast with message: " + hue);
-});
-
-window.Twitch.ext.listen("broadcast", (target, contentType, message) => {
-    log("Received broadcast with message: " + message);
-    const i = parseInt(message);
-    app.ports.receiveHueBroadcast.send(i);
+    let package = {color: hue};
+    window.Twitch.ext.send('broadcast', "application/json", package);
+    log(`Sent broadcast with message: ${package}`);
 });
 
 window.Twitch.ext.onAuthorized(newAuth => {
     log(newAuth.token);
     auth = newAuth;
-
-    const test =
-          makeGetColorRequest()
-          .then(response => response.text())
-          .then(body => {
-              log('Response: ', body);
-              app.ports.receiveHueBroadcast.send(parseInt(body));
-          })
-          .catch(e => {
-              log('Error: ', e);
-          });
 });
+
+function log(...x) {
+    window.Twitch.ext.rig.log(x);
+    console.log(x);
+}
+
+window.Twitch.ext.onError((err) => {
+    log('TWITCH EXT ERROR', err);
+});
+
+window.Twitch.ext.listen('broadcast', (target, contentType, message) => {
+    let msg = JSON.parse(message);
+    log(`Received broadcast with message.color: ${msg.color}`);
+    app.ports.receiveHueBroadcast.send(msg.color);
+});
+
+setTimeout(() => {
+    window.Twitch.ext.send('broadcast', 'application/json', {color: 340});
+    log("asdf");
+}, 3000);

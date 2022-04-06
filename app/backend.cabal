@@ -26,9 +26,13 @@ executable backend-app
 
     -- Modules included in this executable, other than Main.
     other-modules:
-        Auth
-      , Color
+        App
+      , OnlyWands
       , Routes
+      , Storage
+      , Twitch
+      , Types
+      , Util
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -42,15 +46,20 @@ executable backend-app
       , jose
       , lens
       , mtl
+      , req
       , servant
       , servant-server
       , servant-auth
       , servant-auth-server
       , stm
+      , stm-containers
+      , stringsearch
       , text
       , unordered-containers
       , wai-cors
       , warp
+      , websockets
+      , wuss
 
     hs-source-dirs:   src
     default-language: Haskell2010
