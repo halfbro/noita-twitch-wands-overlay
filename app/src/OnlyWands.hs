@@ -17,7 +17,7 @@ import Control.Concurrent.STM
     orElse,
     readTVarIO,
     writeTChan,
-    writeTVar,
+    writeTVar, dupTChan
   )
 import Control.Monad (forever, unless, void)
 import Control.Monad.Cont (liftIO)
@@ -156,7 +156,8 @@ getBroadcastChannelForStreamer :: String -> IO (TChan StreamerInformation)
 getBroadcastChannelForStreamer streamerName = do
   channel <- atomically $ lookupStreamerBroadcastChannel streamerName
   case channel of
-    Just existing -> return existing
+    Just existing -> atomically $ dupTChan existing
     Nothing -> do
-      startWandStreamingForStreamer streamerName
+      newChannel <- startWandStreamingForStreamer streamerName
+      atomically $ dupTChan newChannel
 
