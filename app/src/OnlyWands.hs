@@ -2,12 +2,25 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module OnlyWands
-  ( streamWandsForStreamer,
+  ( getBroadcastChannelForStreamer,
   )
 where
 
 import Control.Concurrent (forkIO)
-import Control.Monad (forever, unless)
+import Control.Concurrent.STM
+  ( STM,
+    TChan,
+    atomically,
+    newBroadcastTChan,
+    newTChan,
+    newTVar,
+    orElse,
+    readTVarIO,
+    writeTChan,
+    writeTVar,
+  )
+import Control.Monad (forever, unless, void)
+import Control.Monad.Cont (liftIO)
 import Data.Aeson
   ( FromJSON (parseJSON),
     ToJSON (toJSON),
@@ -20,7 +33,13 @@ import Data.Aeson
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 import Data.ByteString.Search (breakAfter, breakOn)
+import Data.Maybe (fromMaybe)
 import GHC.Base (mzero)
+--import Storage (insertStreamerData)
+
+--import Storage (insertStreamerData)
+
+import GHC.Conc (unsafeIOToSTM)
 import GHC.Generics (Generic)
 import Network.HTTP.Req
   ( BsResponse,
@@ -35,10 +54,10 @@ import Network.HTTP.Req
     (/:),
     (/~),
   )
-import Network.WebSockets (receiveData)
-import Storage (insertStreamerData)
+import qualified Network.WebSockets as WS
+import Storage (lookupStreamerBroadcastChannel, registerStreamerBroadcastChannel)
 import Twitch (streamerStoppedStreaming)
-import Types (Inventory, Wand)
+import Types (Inventory, StreamerInformation (..), Wand)
 import qualified Util
 import Wuss (runSecureClient)
 
@@ -65,7 +84,7 @@ instance ToJSON SocketData where
         "inventory" .= inventory sd
       ]
 
-parseWandFromHttpResponse :: BsResponse -> Maybe ([Wand], Inventory)
+parseWandFromHttpResponse :: BsResponse -> Maybe StreamerInformation
 parseWandFromHttpResponse res = do
   let html = (responseBody res :: S.ByteString)
   let wandDataStart = snd $ breakAfter "const streamerWands = " html
@@ -76,43 +95,68 @@ parseWandFromHttpResponse res = do
   inventoryData <- decode $ L.fromStrict inventoryDataJson
   return (wandData, inventoryData)
 
-getInitialWandsForStreamer :: String -> IO (Maybe ([Wand], Inventory))
+getInitialWandsForStreamer :: String -> IO StreamerInformation
 getInitialWandsForStreamer streamerName = do
   -- Get initial state from http get
   let runReq' = runReq defaultHttpConfig
   let url = https "onlywands.com" /: "streamer" /~ streamerName
   response <- runReq' $ req GET url NoReqBody bsResponse mempty
-  return $ parseWandFromHttpResponse response
+  return . fromMaybe ([], []) $ parseWandFromHttpResponse response
 
-startWandStreamingForStreamer :: String -> IO ()
+startWandStreamingForStreamer :: String -> IO (TChan StreamerInformation)
 startWandStreamingForStreamer streamerName = do
+  (newStream, cancelToken) <- atomically $ registerStreamerBroadcastChannel streamerName
+  let signalStop () =
+        atomically $
+          writeTVar cancelToken True
+
+  print $ "Start fetching data for " ++ streamerName
+  -- Start 2 forked threads:
+  -- one thread handles listening to onlywands and pushing new data
+  -- the other handles watching the stream to check the streamer is
+  --   still playing Noita
   let urlLoc = "/client=" ++ streamerName
-  runSecureClient "onlywands.com" 443 urlLoc $ \conn ->
-    forever $ do
-      msg <- receiveData conn
-      case decode msg of
-        Nothing -> return ()
-        Just
-          SocketData
-            { wands = wands,
-              inventory = inventory
-            } ->
-            insertStreamerData streamerName wands inventory
+  forkIO . runSecureClient "onlywands.com" 443 urlLoc $ \conn -> do
+    initialWands <- getInitialWandsForStreamer streamerName
+    atomically $ writeTChan newStream initialWands
 
-streamWandsForStreamer :: String -> IO ()
-streamWandsForStreamer streamerName = do
-  initialWands <- getInitialWandsForStreamer streamerName
-  case initialWands of
-    Nothing -> return ()
-    Just (wands, inventory) ->
-      insertStreamerData streamerName wands inventory
+    let fetchLoop = do
+          stopSignalled <- readTVarIO cancelToken
+          if stopSignalled then
+            WS.sendClose conn ("Closing" :: S.ByteString)
+          else do
+            msg <- WS.receiveData conn
+            case decode msg of
+              Nothing -> return ()
+              Just
+                SocketData
+                  { wands = wands,
+                    inventory = inventory
+                  } ->
+                  atomically $ writeTChan newStream (wands, inventory)
+            fetchLoop
+    fetchLoop
 
-  threadId <- forkIO $ startWandStreamingForStreamer streamerName
 
-  let loop = do
-        -- while the user is online and has game set to 'Noita'
-        Util.sleepSeconds 300
-        --Util.sleepSeconds 10
-        stopped <- streamerStoppedStreaming streamerName
-        unless stopped loop
-  loop
+    print $ "End fetching data for " ++ streamerName
+
+    let readRestOfMessages = do
+          asdf <- WS.receiveDataMessage conn
+          forever $ void $ WS.receiveDataMessage conn
+          readRestOfMessages
+    readRestOfMessages
+
+    print $ "Closing socket for " ++ streamerName
+
+    return ()
+
+  return newStream
+
+getBroadcastChannelForStreamer :: String -> IO (TChan StreamerInformation)
+getBroadcastChannelForStreamer streamerName = do
+  channel <- atomically $ lookupStreamerBroadcastChannel streamerName
+  case channel of
+    Just existing -> return existing
+    Nothing -> do
+      startWandStreamingForStreamer streamerName
+

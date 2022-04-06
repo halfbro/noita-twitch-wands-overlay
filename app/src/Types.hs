@@ -1,6 +1,12 @@
 {-# LANGUAGE DeriveGeneric #-}
 
-module Types (Inventory, SpellName, Wand) where
+module Types
+  ( Inventory,
+    SpellName,
+    StreamerInformation,
+    Wand,
+  )
+where
 
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
@@ -39,3 +45,5 @@ data Wand = Wand
 instance ToJSON Wand
 
 instance FromJSON Wand
+
+type StreamerInformation = ([Wand], Inventory)
