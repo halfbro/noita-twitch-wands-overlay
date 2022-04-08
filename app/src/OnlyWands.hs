@@ -107,7 +107,9 @@ startWandStreamingForStreamer streamerName chan t onlineCheck = do
           let fetchLoop = do
                 stopSignalled <- readTVarIO stopToken
                 if stopSignalled
-                  then WS.sendClose conn ("Closing" :: S.ByteString)
+                  then do
+                    print "Closing socket"
+                    WS.sendClose conn ("Closing" :: S.ByteString)
                   else do
                     msg <- WS.receiveData conn
                     case decode msg of
