@@ -5,10 +5,6 @@ module OnlyWands
   )
 where
 
---import Storage (insertStreamerData)
-
---import Storage (insertStreamerData)
-
 import qualified Channel
 import Control.Concurrent (forkIO)
 import Control.Concurrent.STM (atomically, newTVarIO, readTVarIO, writeTVar)
@@ -113,15 +109,12 @@ startWandStreamingForStreamer streamerName chan t onlineCheck = do
                   else do
                     msg <- WS.receiveData conn
                     case decode msg of
-                      Nothing -> do
-                        print msg
-                        return ()
+                      Nothing -> return ()
                       Just
                         SocketData
                           { wands = wands,
                             inventory = inventory
                           } -> do
-                          print $ "Got new wand data for " ++ streamerName
                           Channel.broadcastToChannel chan (wands, inventory)
                     fetchLoop
           fetchLoop
@@ -141,10 +134,8 @@ startWandStreamingForStreamer streamerName chan t onlineCheck = do
           then signalStop
           else checkStreamerOnline
 
-  t1 <- forkIO fetchOnlyWandsStream
-  t2 <- forkIO checkStreamerOnline
-  print t1
-  print t2
+  forkIO fetchOnlyWandsStream
+  forkIO checkStreamerOnline
 
   Channel.makeReadChannel chan
 
