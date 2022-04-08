@@ -27,9 +27,9 @@ executable backend-app
     -- Modules included in this executable, other than Main.
     other-modules:
         App
+      , Channel
       , OnlyWands
       , Routes
-      , Storage
       , Twitch
       , Types
       , Util
@@ -42,6 +42,7 @@ executable backend-app
       , base64-bytestring
       , bytestring
       , containers
+      , hashable
       , http-types
       , jose
       , lens
