@@ -5,6 +5,7 @@
 
 module Twitch.Auth where
 
+import Control.Exception (Exception (toException), SomeException (SomeException), throw)
 import Control.Lens
 import Control.Lens.Getter (view)
 import Control.Monad.Except (runExceptT)
@@ -12,33 +13,34 @@ import Crypto.JOSE
 import Crypto.JOSE.Error
 import Crypto.JWT (ClaimsSet, NumericDate (NumericDate), SignedJWT, addClaim, claimExp, emptyClaimsSet, signClaims, unregisteredClaims)
 import Data.Aeson
+import Data.Bifunctor (first)
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Base64.Lazy as B64
 import qualified Data.ByteString.Lazy as L
+import Data.Either (fromRight)
 import qualified Data.HashMap.Strict as HM
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Encoding (encodeUtf8)
 import Data.Time (NominalDiffTime, TimeOfDay (TimeOfDay), UTCTime (UTCTime), addUTCTime, fromGregorian, getCurrentTime, timeOfDayToTime)
+import Data.Time.Clock.POSIX (posixSecondsToUTCTime, utcTimeToPOSIXSeconds)
+import GHC.Exception (errorCallException)
 import GHC.Generics (Generic)
-import Network.HTTP.Client (domainMatches, newManager, managerModifyRequest, requestHeaders)
+import GHC.TopHandler (runIO)
+import Network.HTTP.Client (domainMatches, managerModifyRequest, newManager, requestHeaders)
 import Network.HTTP.Client.TLS (tlsManagerSettings)
+import qualified Network.WebSockets as S
 import Servant
+import Servant.API.ContentTypes (JSON, OctetStream)
 import Servant.Auth
 import Servant.Auth.Client
 import Servant.Auth.JWT (FromJWT (decodeJWT), ToJWT)
-import Servant.Client (ClientEnv, ClientM, client, mkClientEnv, parseBaseUrl, runClientM, ClientError (ConnectionError))
+import Servant.Client (ClientEnv, ClientError (ConnectionError), ClientM, client, mkClientEnv, parseBaseUrl, runClientM)
+import Servant.Client.Streaming (ClientError)
 import qualified System.Environment
 import qualified System.IO.Unsafe as System.IO
 import Prelude hiding (exp)
-import GHC.TopHandler (runIO)
-import qualified Network.WebSockets as S
-import Servant.Client.Streaming (ClientError)
-import Control.Exception (throw, Exception (toException), SomeException (SomeException))
-import GHC.Exception (errorCallException)
-import Data.Either (fromRight)
-import Data.Bifunctor (first)
-import Data.Time.Clock.POSIX (posixSecondsToUTCTime, utcTimeToPOSIXSeconds)
+import Control.Monad (void)
 
 toBytestring :: String -> L.ByteString
 toBytestring = L.fromStrict . encodeUtf8 . T.pack
@@ -159,7 +161,7 @@ data PubSubMessageData = PubSubMessageData
 instance ToJSON PubSubMessageData
 
 type SendPubSubMessage =
-  "helix" :> "extensions" :> "pubsub" :> WithTwitchClientSecurity (ReqBody '[JSON] PubSubMessageData :> Post '[JSON] ())
+  "helix" :> "extensions" :> "pubsub" :> WithTwitchClientSecurity (ReqBody '[JSON] PubSubMessageData :> PostNoContent)
 
 twitchApi :: Proxy SendPubSubMessage
 twitchApi = Proxy
@@ -169,30 +171,32 @@ twitchEnv =
   mkClientEnv manager url
   where
     manager =
-      System.IO.unsafePerformIO $ newManager (tlsManagerSettings {managerModifyRequest = \req -> do print (requestHeaders req); return req})
+      System.IO.unsafePerformIO $ newManager $ tlsManagerSettings {managerModifyRequest = \req -> do print (requestHeaders req); return req}
     url = System.IO.unsafePerformIO $ parseBaseUrl "https://api.twitch.tv"
 
-sendPubSubMessage' :: Token -> Maybe String -> PubSubMessageData -> ClientM ()
+sendPubSubMessage' :: Token -> Maybe String -> PubSubMessageData -> ClientM NoContent
 sendPubSubMessage' = client twitchApi
 
 testJwt =
   TwitchJwt
     { exp = NumericDate (UTCTime (fromGregorian 2 2 2) $ timeOfDayToTime (TimeOfDay 0 0 0)),
-      user_id = "12345",
-      opaque_user_id = "12345",
+      user_id = "21194124",
+      opaque_user_id = "21194124",
       role = "external",
-      channel_id = Just $ Channel "12345",
+      channel_id = Just $ Channel "21194124",
       pubsub_perms =
         PubSubPerms
           { send = [Broadcast]
           }
     }
-testData = PubSubMessageData
-  { target = [Broadcast],
-    broadcaster_id = "12345",
-    is_global_broadcast = False,
-    message = "test broadcast"
-  }
+
+testData =
+  PubSubMessageData
+    { target = [Broadcast],
+      broadcaster_id = "21194124",
+      is_global_broadcast = False,
+      message = "test broadcast"
+    }
 
 roundUTCTime :: UTCTime -> UTCTime
 roundUTCTime = posixSecondsToUTCTime . fromIntegral . truncate . utcTimeToPOSIXSeconds
@@ -221,6 +225,5 @@ sendPubSubMessage twitchJwt d = do
     Left e -> return $ Left e
     Right signed -> do
       let token = Token . S.fromLazyByteString . encodeCompact $ signed
-      print token
       res <- runClientM (sendPubSubMessage' token (Just _clientId) d) twitchEnv
-      return $ first show res
+      return $ void $ first show res
