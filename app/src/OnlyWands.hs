@@ -76,12 +76,12 @@ getInitialWandsForStreamer streamerName = do
   return . fromMaybe ([], []) $ parseWandFromHttpResponse response
 
 startWandStreamingForStreamer ::
+  IO Bool ->
   String ->
   Channel.WriteChannel ->
   Channel.StopToken ->
-  IO Bool ->
   IO Channel.ReadChannel
-startWandStreamingForStreamer streamerName chan t onlineCheck = do
+startWandStreamingForStreamer onlineCheck streamerName chan t = do
   stopToken <- newTVarIO False
   let signalStop = do
         print $ "Stop signalled for " ++ streamerName
@@ -145,4 +145,4 @@ getBroadcastChannelForStreamer onlineCheck streamerName = do
   case channel of
     Channel.Existing readChan -> return readChan
     Channel.NewBroadcast (newChan, token) -> do
-      startWandStreamingForStreamer streamerName newChan token onlineCheck
+      startWandStreamingForStreamer onlineCheck streamerName newChan token

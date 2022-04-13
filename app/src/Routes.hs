@@ -5,12 +5,8 @@
 module Routes where
 
 import Control.Lens.Getter ()
-import Crypto.JOSE (fromOctets)
-import qualified Data.ByteString.Base64.Lazy as B64
-import qualified Data.ByteString.Lazy as L
 import qualified Data.Map as M
 import qualified Data.Text as T
-import Data.Text.Encoding (encodeUtf8)
 import GHC.Generics ()
 import Network.HTTP.Types (hAccept, hAcceptLanguage, hAuthorization, hContentType)
 import Network.HTTP.Types.Header (hContentLanguage)
@@ -50,16 +46,9 @@ import Servant.Auth.Server
 import qualified Servant.Auth.Server as AuthResult
 import qualified System.Environment
 import qualified System.IO.Unsafe as System.IO
-import Twitch (TwitchJwt)
+import Twitch
+import Twitch.Api (twitchJwtSettings)
 
-toBytestring :: [Char] -> L.ByteString
-toBytestring = L.fromStrict . encodeUtf8 . T.pack
-
-_secret = System.IO.unsafePerformIO $ System.Environment.getEnv "TWITCH_JWT_SECRET"
-
-secret = fromOctets . B64.decodeLenient . toBytestring $ _secret
-
-type TwitchAuth = Auth '[JWT] TwitchJwt
 
 type RawApi =
   "color" :> Get '[JSON] Integer
@@ -91,7 +80,7 @@ runApi = do
               { corsMethods = [methodOptions, methodGet, methodPost],
                 corsRequestHeaders = [hAuthorization, hContentType, hAccept, hAcceptLanguage, hContentLanguage]
               }
-  let ctx = defaultCookieSettings :. defaultJWTSettings secret :. EmptyContext
+  let ctx = defaultCookieSettings :. twitchJwtSettings :. EmptyContext
   let app = serveWithContext colorApi ctx server
   let withCors = cors corsConfig
   run 7999 (withCors app)
