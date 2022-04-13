@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Twitch.Auth where
 
@@ -171,7 +172,7 @@ twitchEnv =
   mkClientEnv manager url
   where
     manager =
-      System.IO.unsafePerformIO $ newManager $ tlsManagerSettings {managerModifyRequest = \req -> do print (requestHeaders req); return req}
+      System.IO.unsafePerformIO $ newManager $ tlsManagerSettings --{managerModifyRequest = \req -> do print (requestHeaders req); return req}
     url = System.IO.unsafePerformIO $ parseBaseUrl "https://api.twitch.tv"
 
 sendPubSubMessage' :: Token -> Maybe String -> PubSubMessageData -> ClientM NoContent
@@ -213,17 +214,17 @@ mkClaims twitchJwt = do
       & addClaim "pubsub_perms" (toJSON $ pubsub_perms twitchJwt)
 
 --enocdeTwitchJwt :: L.ByteString -> IO (Either Error SignedJWT)
-encodeTwitchJwt :: TwitchJwt -> IO (Either Error SignedJWT)
+encodeTwitchJwt :: TwitchJwt -> IO SignedJWT
 encodeTwitchJwt jwt = do
   claims <- mkClaims jwt
-  runExceptT $ makeJWSHeader twitchJwtSecret >>= \h -> signClaims twitchJwtSecret h claims
+  maybeSigned <- runExceptT $ makeJWSHeader twitchJwtSecret >>= \h -> signClaims twitchJwtSecret h claims
+  case maybeSigned of
+    Left (_ :: Error) -> fail "Error signing JWT somehow???"
+    Right signed -> return signed
 
 sendPubSubMessage :: TwitchJwt -> PubSubMessageData -> IO (Either String ())
 sendPubSubMessage twitchJwt d = do
-  jwt <- first show <$> encodeTwitchJwt twitchJwt
-  case jwt of
-    Left e -> return $ Left e
-    Right signed -> do
-      let token = Token . S.fromLazyByteString . encodeCompact $ signed
-      res <- runClientM (sendPubSubMessage' token (Just _clientId) d) twitchEnv
-      return $ void $ first show res
+  signed <- encodeTwitchJwt twitchJwt
+  let token = Token . S.fromLazyByteString . encodeCompact $ signed
+  res <- runClientM (sendPubSubMessage' token (Just _clientId) d) twitchEnv
+  return $ void $ first show res
