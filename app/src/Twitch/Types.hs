@@ -1,8 +1,8 @@
 module Twitch.Types where
 
+import Data.Aeson
 import Data.Text
 import GHC.Generics
-import Data.Aeson
 
 data PubSubMessage = PubSubMessage
   { target :: [PubSubTarget],

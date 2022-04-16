@@ -29,7 +29,7 @@ executable backend-app
         DeriveGeneric
       , OverloadedStrings
       , NumericUnderscores
-      , DisambiguateRecordFields
+      , DuplicateRecordFields
     other-modules:
         App
       , Channel

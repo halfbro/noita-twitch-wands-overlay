@@ -18,7 +18,7 @@ import Crypto.JOSE
 import Crypto.JOSE.Error ()
 import Crypto.JWT (ClaimsSet, NumericDate (NumericDate), SignedJWT, addClaim, claimExp, emptyClaimsSet, signClaims, unregisteredClaims)
 import Data.Aeson
-  ( FromJSON (parseJSON),
+  ( FromJSON,
     Result (Success),
     ToJSON (toJSON),
     Value (String),
@@ -70,6 +70,8 @@ _secret = System.IO.unsafePerformIO $ System.Environment.getEnv "TWITCH_JWT_SECR
 _clientId = System.IO.unsafePerformIO $ System.Environment.getEnv "TWITCH_API_CLIENT_ID"
 
 twitchJwtSecret = fromOctets . B64.decodeLenient . toBytestring $ _secret
+
+type AppAccessToken = String
 
 data TwitchJwt = TwitchJwt
   { exp :: NumericDate,
@@ -134,12 +136,19 @@ type WithTwitchClientJwt a = Auth '[Bearer] Token :> Header "Client-Id" String :
 
 type WithTwitchClientAppToken a = Auth '[Bearer] Token :> Header "Client-Id" String :> a
 
-twitchEnv :: IO ClientEnv
-twitchEnv =
+twitchApiEnv :: IO ClientEnv
+twitchApiEnv =
   mkClientEnv <$> manager <*> url
   where
     manager = newManager tlsManagerSettings
     url = parseBaseUrl "https://api.twitch.tv"
+
+twitchIdEnv :: IO ClientEnv
+twitchIdEnv =
+  mkClientEnv <$> manager <*> url
+  where
+    manager = newManager tlsManagerSettings
+    url = parseBaseUrl "https://id.twitch.tv"
 
 mkClaims :: TwitchJwt -> IO ClaimsSet
 mkClaims twitchJwt = do
@@ -163,8 +172,14 @@ encodeTwitchJwt jwt = do
     Left (_ :: Error) -> fail "Error signing JWT somehow???"
     Right signed -> return signed
 
-runWithTwitchAuth :: (Token -> Maybe String -> a -> ClientM b) -> TwitchJwt -> a -> IO (Either String b)
-runWithTwitchAuth f jwt args = do
+runWithTwitchAppTokenAuth :: (Token -> Maybe String -> a -> ClientM b) -> AppAccessToken -> a -> IO (Either String b)
+runWithTwitchAppTokenAuth f t args = do
+  let token = Token $ encodeUtf8 $ T.pack t
+  res <- runClientM (f token (Just _clientId) args) =<< twitchApiEnv
+  return $ first show res
+
+runWithTwitchJwtAuth :: (Token -> Maybe String -> a -> ClientM b) -> TwitchJwt -> a -> IO (Either String b)
+runWithTwitchJwtAuth f jwt args = do
   token <- Token . WS.fromLazyByteString . encodeCompact <$> encodeTwitchJwt jwt
-  res <- runClientM (f token (Just _clientId) args) =<< twitchEnv
+  res <- runClientM (f token (Just _clientId) args) =<< twitchApiEnv
   return $ first show res
