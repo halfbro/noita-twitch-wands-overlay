@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Routes where
@@ -47,9 +46,8 @@ import qualified Servant.Auth.Server as AuthResult
 import qualified System.Environment
 import qualified System.IO.Unsafe as System.IO
 import Twitch
-import Twitch.Api (twitchJwtSettings)
 
-
+{-
 type RawApi =
   "color" :> Get '[JSON] Integer
     :<|> "color" :> ReqBody '[JSON] Integer :> Post '[JSON] Integer
@@ -61,6 +59,8 @@ getColor _jwt = do
 postColor :: TwitchJwt -> Integer -> Handler Integer
 postColor _jwt color = do
   return 42
+
+type TwitchAuth = Auth '[JWT] TwitchJwt
 
 type ColorApi = TwitchAuth :> RawApi
 
@@ -84,3 +84,4 @@ runApi = do
   let app = serveWithContext colorApi ctx server
   let withCors = cors corsConfig
   run 7999 (withCors app)
+-}

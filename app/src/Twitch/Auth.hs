@@ -1,19 +1,29 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Twitch.Auth where
 
 import Control.Exception (Exception (toException), SomeException (SomeException), throw)
-import Control.Lens
+import Control.Lens (view, (&), (?~))
 import Control.Lens.Getter (view)
+import Control.Monad (void)
 import Control.Monad.Except (runExceptT)
 import Crypto.JOSE
-import Crypto.JOSE.Error
+  ( Error,
+    encodeCompact,
+    fromOctets,
+    makeJWSHeader,
+  )
+import Crypto.JOSE.Error ()
 import Crypto.JWT (ClaimsSet, NumericDate (NumericDate), SignedJWT, addClaim, claimExp, emptyClaimsSet, signClaims, unregisteredClaims)
 import Data.Aeson
+  ( FromJSON (parseJSON),
+    Result (Success),
+    ToJSON (toJSON),
+    Value (String),
+    fromJSON,
+  )
 import Data.Bifunctor (first)
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Base64.Lazy as B64
@@ -23,25 +33,34 @@ import qualified Data.HashMap.Strict as HM
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Encoding (encodeUtf8)
-import Data.Time (NominalDiffTime, TimeOfDay (TimeOfDay), UTCTime (UTCTime), addUTCTime, fromGregorian, getCurrentTime, timeOfDayToTime)
-import Data.Time.Clock.POSIX (posixSecondsToUTCTime, utcTimeToPOSIXSeconds)
+import Data.Time (addUTCTime, getCurrentTime)
 import GHC.Exception (errorCallException)
 import GHC.Generics (Generic)
 import GHC.TopHandler (runIO)
 import Network.HTTP.Client (domainMatches, managerModifyRequest, newManager, requestHeaders)
 import Network.HTTP.Client.TLS (tlsManagerSettings)
-import qualified Network.WebSockets as S
+import qualified Network.WebSockets as WS
 import Servant
+  ( Header,
+    JSON,
+    NoContent,
+    PostNoContent,
+    Proxy (..),
+    ReqBody,
+    type (:>),
+  )
 import Servant.API.ContentTypes (JSON, OctetStream)
-import Servant.Auth
-import Servant.Auth.Client
+import Servant.Auth (Auth)
+import Servant.Auth.Client (Bearer, Token (Token))
 import Servant.Auth.JWT (FromJWT (decodeJWT), ToJWT)
+import Servant.Auth.Server
 import Servant.Client (ClientEnv, ClientError (ConnectionError), ClientM, client, mkClientEnv, parseBaseUrl, runClientM)
 import Servant.Client.Streaming (ClientError)
 import qualified System.Environment
 import qualified System.IO.Unsafe as System.IO
+import Twitch.Types
+import Util (roundUTCTime)
 import Prelude hiding (exp)
-import Control.Monad (void)
 
 toBytestring :: String -> L.ByteString
 toBytestring = L.fromStrict . encodeUtf8 . T.pack
@@ -51,46 +70,6 @@ _secret = System.IO.unsafePerformIO $ System.Environment.getEnv "TWITCH_JWT_SECR
 _clientId = System.IO.unsafePerformIO $ System.Environment.getEnv "TWITCH_API_CLIENT_ID"
 
 twitchJwtSecret = fromOctets . B64.decodeLenient . toBytestring $ _secret
-
-data ChannelId
-  = Channel Text
-  | All
-  deriving (Eq, Show)
-
-instance ToJSON ChannelId where
-  toJSON All = String "all"
-  toJSON (Channel s) = String s
-
-instance FromJSON ChannelId where
-  parseJSON (String "all") = return All
-  parseJSON (String s) = return $ Channel s
-  parseJSON _ = fail "channel_id value is not a string"
-
-data PubSubTarget
-  = Broadcast
-  | Global
-  | Whisper Text
-  deriving (Eq, Show, Generic)
-
-instance ToJSON PubSubTarget where
-  toJSON Broadcast = "broadcast"
-  toJSON Global = "global"
-  toJSON (Whisper t) = String t
-
-instance FromJSON PubSubTarget where
-  parseJSON (String "broadcast") = return Broadcast
-  parseJSON (String "global") = return Global
-  parseJSON (String s) = return $ Whisper s
-  parseJSON _ = fail "pubsub permission is not a string"
-
-newtype PubSubPerms = PubSubPerms
-  { send :: [PubSubTarget]
-  }
-  deriving (Eq, Show, Generic)
-
-instance ToJSON PubSubPerms
-
-instance FromJSON PubSubPerms
 
 data TwitchJwt = TwitchJwt
   { exp :: NumericDate,
@@ -106,6 +85,7 @@ instance ToJSON TwitchJwt
 
 instance FromJSON TwitchJwt
 
+{-
 instance ToJWT TwitchJwt
 
 instance FromJWT TwitchJwt where
@@ -148,72 +128,33 @@ instance FromJWT TwitchJwt where
                 channel_id = channel_id,
                 pubsub_perms = pubsub_perms
               }
+-}
 
-type WithTwitchClientSecurity a = Auth '[Bearer] Token :> Header "Client-Id" String :> a
+type WithTwitchClientJwt a = Auth '[Bearer] Token :> Header "Client-Id" String :> a
 
-data PubSubMessageData = PubSubMessageData
-  { target :: [PubSubTarget],
-    broadcaster_id :: Text,
-    is_global_broadcast :: Bool,
-    message :: Text
-  }
-  deriving (Eq, Show, Generic)
+type WithTwitchClientAppToken a = Auth '[Bearer] Token :> Header "Client-Id" String :> a
 
-instance ToJSON PubSubMessageData
-
-type SendPubSubMessage =
-  "helix" :> "extensions" :> "pubsub" :> WithTwitchClientSecurity (ReqBody '[JSON] PubSubMessageData :> PostNoContent)
-
-twitchApi :: Proxy SendPubSubMessage
-twitchApi = Proxy
-
-twitchEnv :: ClientEnv
+twitchEnv :: IO ClientEnv
 twitchEnv =
-  mkClientEnv manager url
+  mkClientEnv <$> manager <*> url
   where
-    manager =
-      System.IO.unsafePerformIO $ newManager $ tlsManagerSettings --{managerModifyRequest = \req -> do print (requestHeaders req); return req}
-    url = System.IO.unsafePerformIO $ parseBaseUrl "https://api.twitch.tv"
-
-sendPubSubMessage' :: Token -> Maybe String -> PubSubMessageData -> ClientM NoContent
-sendPubSubMessage' = client twitchApi
-
-testJwt =
-  TwitchJwt
-    { exp = NumericDate (UTCTime (fromGregorian 2 2 2) $ timeOfDayToTime (TimeOfDay 0 0 0)),
-      user_id = "21194124",
-      opaque_user_id = "21194124",
-      role = "external",
-      channel_id = Just $ Channel "21194124",
-      pubsub_perms =
-        PubSubPerms
-          { send = [Broadcast]
-          }
-    }
-
-testData =
-  PubSubMessageData
-    { target = [Broadcast],
-      broadcaster_id = "21194124",
-      is_global_broadcast = False,
-      message = "test broadcast"
-    }
-
-roundUTCTime :: UTCTime -> UTCTime
-roundUTCTime = posixSecondsToUTCTime . fromIntegral . truncate . utcTimeToPOSIXSeconds
+    manager = newManager tlsManagerSettings
+    url = parseBaseUrl "https://api.twitch.tv"
 
 mkClaims :: TwitchJwt -> IO ClaimsSet
 mkClaims twitchJwt = do
   exp <- roundUTCTime . addUTCTime 30 <$> getCurrentTime
-  let claimsBase = emptyClaimsSet & claimExp ?~ NumericDate exp
   pure $
-    claimsBase
+    emptyClaimsSet
+      & claimExp ?~ NumericDate exp
       & addClaim "user_id" (toJSON $ user_id twitchJwt)
       & addClaim "role" "external"
       & addClaim "channel_id" (toJSON $ channel_id twitchJwt)
       & addClaim "pubsub_perms" (toJSON $ pubsub_perms twitchJwt)
 
---enocdeTwitchJwt :: L.ByteString -> IO (Either Error SignedJWT)
+twitchJwtSettings :: JWTSettings
+twitchJwtSettings = defaultJWTSettings twitchJwtSecret
+
 encodeTwitchJwt :: TwitchJwt -> IO SignedJWT
 encodeTwitchJwt jwt = do
   claims <- mkClaims jwt
@@ -222,9 +163,8 @@ encodeTwitchJwt jwt = do
     Left (_ :: Error) -> fail "Error signing JWT somehow???"
     Right signed -> return signed
 
-sendPubSubMessage :: TwitchJwt -> PubSubMessageData -> IO (Either String ())
-sendPubSubMessage twitchJwt d = do
-  signed <- encodeTwitchJwt twitchJwt
-  let token = Token . S.fromLazyByteString . encodeCompact $ signed
-  res <- runClientM (sendPubSubMessage' token (Just _clientId) d) twitchEnv
-  return $ void $ first show res
+runWithTwitchAuth :: (Token -> Maybe String -> a -> ClientM b) -> TwitchJwt -> a -> IO (Either String b)
+runWithTwitchAuth f jwt args = do
+  token <- Token . WS.fromLazyByteString . encodeCompact <$> encodeTwitchJwt jwt
+  res <- runClientM (f token (Just _clientId) args) =<< twitchEnv
+  return $ first show res

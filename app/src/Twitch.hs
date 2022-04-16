@@ -1,7 +1,6 @@
-module Twitch (streamerStoppedStreaming, TwitchAuth, TwitchJwt) where
+module Twitch (streamerStoppedStreaming, TwitchJwt, twitchJwtSettings) where
 
-import Twitch.Api (TwitchAuth)
-import Twitch.Auth (TwitchJwt)
+import Twitch.Auth (TwitchJwt, twitchJwtSettings)
 
 streamerStoppedStreaming :: String -> IO Bool
 streamerStoppedStreaming streamerName =

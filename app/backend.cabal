@@ -25,6 +25,11 @@ executable backend-app
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
+    extensions:
+        DeriveGeneric
+      , OverloadedStrings
+      , NumericUnderscores
+      , DisambiguateRecordFields
     other-modules:
         App
       , Channel
@@ -33,6 +38,7 @@ executable backend-app
       , Twitch
       , Twitch.Api
       , Twitch.Auth
+      , Twitch.Types
       , Types
       , Util
 

@@ -12,9 +12,15 @@ module Channel
 where
 
 import Control.Concurrent.STM
-import Data.Hashable
+  ( TChan,
+    atomically,
+    dupTChan,
+    newBroadcastTChan,
+    readTChan,
+    writeTChan,
+  )
 import GHC.IO (throwIO, unsafePerformIO)
-import StmContainers.Map as StmMap
+import StmContainers.Map as StmMap (Map, delete, insert, lookup, newIO)
 import Types (Inventory, StreamerInformation, Wand)
 
 data ChannelMessage
