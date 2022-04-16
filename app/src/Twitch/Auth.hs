@@ -39,6 +39,7 @@ import GHC.Generics (Generic)
 import GHC.TopHandler (runIO)
 import Network.HTTP.Client (domainMatches, managerModifyRequest, newManager, requestHeaders)
 import Network.HTTP.Client.TLS (tlsManagerSettings)
+import Network.HTTP.Simple (Request, addRequestHeader, addToRequestQueryString, parseRequest, setRequestMethod)
 import qualified Network.WebSockets as WS
 import Servant
   ( Header,
@@ -59,19 +60,19 @@ import Servant.Client.Streaming (ClientError)
 import qualified System.Environment
 import qualified System.IO.Unsafe as System.IO
 import Twitch.Types
-import Util (roundUTCTime)
+import Util (roundUTCTime, toLazyBytestring, toBytestring)
 import Prelude hiding (exp)
+import Twitch.Secrets (twitchJwtSecret, twitchClientId)
+import Twitch.AppAccessTokenCache (getAppAccessToken)
 
-toBytestring :: String -> L.ByteString
-toBytestring = L.fromStrict . encodeUtf8 . T.pack
+twitchJwk = fromOctets . B64.decodeLenient . toLazyBytestring $ twitchJwtSecret
 
-_secret = System.IO.unsafePerformIO $ System.Environment.getEnv "TWITCH_JWT_SECRET"
-
-_clientId = System.IO.unsafePerformIO $ System.Environment.getEnv "TWITCH_API_CLIENT_ID"
-
-twitchJwtSecret = fromOctets . B64.decodeLenient . toBytestring $ _secret
-
-type AppAccessToken = String
+--twitchIdEnv :: IO ClientEnv
+--twitchIdEnv =
+--mkClientEnv <$> manager <*> url
+--where
+--manager = newManager tlsManagerSettings
+--url = parseBaseUrl "https://id.twitch.tv"
 
 data TwitchJwt = TwitchJwt
   { exp :: NumericDate,
@@ -143,13 +144,6 @@ twitchApiEnv =
     manager = newManager tlsManagerSettings
     url = parseBaseUrl "https://api.twitch.tv"
 
-twitchIdEnv :: IO ClientEnv
-twitchIdEnv =
-  mkClientEnv <$> manager <*> url
-  where
-    manager = newManager tlsManagerSettings
-    url = parseBaseUrl "https://id.twitch.tv"
-
 mkClaims :: TwitchJwt -> IO ClaimsSet
 mkClaims twitchJwt = do
   exp <- roundUTCTime . addUTCTime 30 <$> getCurrentTime
@@ -162,24 +156,24 @@ mkClaims twitchJwt = do
       & addClaim "pubsub_perms" (toJSON $ pubsub_perms twitchJwt)
 
 twitchJwtSettings :: JWTSettings
-twitchJwtSettings = defaultJWTSettings twitchJwtSecret
+twitchJwtSettings = defaultJWTSettings twitchJwk
 
 encodeTwitchJwt :: TwitchJwt -> IO SignedJWT
 encodeTwitchJwt jwt = do
   claims <- mkClaims jwt
-  maybeSigned <- runExceptT $ makeJWSHeader twitchJwtSecret >>= \h -> signClaims twitchJwtSecret h claims
+  maybeSigned <- runExceptT $ makeJWSHeader twitchJwk >>= \h -> signClaims twitchJwk h claims
   case maybeSigned of
     Left (_ :: Error) -> fail "Error signing JWT somehow???"
     Right signed -> return signed
 
-runWithTwitchAppTokenAuth :: (Token -> Maybe String -> a -> ClientM b) -> AppAccessToken -> a -> IO (Either String b)
-runWithTwitchAppTokenAuth f t args = do
-  let token = Token $ encodeUtf8 $ T.pack t
-  res <- runClientM (f token (Just _clientId) args) =<< twitchApiEnv
+runWithTwitchAppTokenAuth :: (Token -> Maybe String -> a -> ClientM b) -> a -> IO (Either String b)
+runWithTwitchAppTokenAuth f args = do
+  token <- Token . toBytestring <$> getAppAccessToken
+  res <- runClientM (f token (Just twitchClientId) args) =<< twitchApiEnv
   return $ first show res
 
 runWithTwitchJwtAuth :: (Token -> Maybe String -> a -> ClientM b) -> TwitchJwt -> a -> IO (Either String b)
 runWithTwitchJwtAuth f jwt args = do
   token <- Token . WS.fromLazyByteString . encodeCompact <$> encodeTwitchJwt jwt
-  res <- runClientM (f token (Just _clientId) args) =<< twitchApiEnv
+  res <- runClientM (f token (Just twitchClientId) args) =<< twitchApiEnv
   return $ first show res

@@ -6,6 +6,8 @@ module Twitch.Api
     getChannelInformation,
     getActiveStreamById,
     getActiveStreamByName,
+    TwitchResponse(..),
+    StreamInformation(..),
   )
 where
 
@@ -29,8 +31,7 @@ import Servant
 import Servant.Auth.Server (JWTSettings)
 import Servant.Client (client)
 import Twitch.Auth
-  ( AppAccessToken,
-    TwitchJwt (..),
+  ( TwitchJwt (..),
     WithTwitchClientAppToken,
     WithTwitchClientJwt,
     runWithTwitchAppTokenAuth,
@@ -71,16 +72,11 @@ data ChannelInformation = ChannelInformation
 instance FromJSON ChannelInformation
 
 data StreamInformation = StreamInformation
-  { id :: String,
+  { 
     user_id :: String,
     user_login :: String,
     user_name :: String,
-    game_id :: String,
-    game_name :: String,
-    title :: String,
-    viewer_count :: Integer,
-    started_at :: String, -- UTC timestamp
-    language :: String
+    game_id :: String
   }
   deriving (Eq, Show, Generic)
 
@@ -108,9 +104,9 @@ twitchApi :: Proxy TwitchApi
 twitchApi = Proxy
 
 sendPubSubMessage :: TwitchJwt -> PubSubMessage -> IO (Either String NoContent)
-getChannelInformation :: AppAccessToken -> String -> IO (Either String (TwitchResponse ChannelInformation))
-getActiveStreamById :: AppAccessToken -> String -> IO (Either String (TwitchResponse StreamInformation))
-getActiveStreamByName :: AppAccessToken -> String -> IO (Either String (TwitchResponse StreamInformation))
+getChannelInformation :: String -> IO (Either String (TwitchResponse ChannelInformation))
+getActiveStreamById :: String -> IO (Either String (TwitchResponse StreamInformation))
+getActiveStreamByName :: String -> IO (Either String (TwitchResponse StreamInformation))
 ( sendPubSubMessage,
   getChannelInformation,
   getActiveStreamById,

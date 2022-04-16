@@ -37,7 +37,9 @@ executable backend-app
       , Routes
       , Twitch
       , Twitch.Api
+      , Twitch.AppAccessTokenCache
       , Twitch.Auth
+      , Twitch.Secrets
       , Twitch.Types
       , Types
       , Util
@@ -49,10 +51,13 @@ executable backend-app
       , aeson
       , base64-bytestring
       , bytestring
+      , cache
+      , clock
       , containers
       , hashable
       , http-client
       , http-client-tls
+      , http-conduit
       , http-types
       , jose
       , lens

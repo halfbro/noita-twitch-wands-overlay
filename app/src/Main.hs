@@ -3,10 +3,10 @@ module Main where
 import qualified Util
 import qualified OnlyWands
 import Channel (streamFromChannel)
+import Twitch (isStreamingNoita)
 
 main :: IO ()
 main = do
   putStrLn "Hello, Haskell!"
-  let onlineCheck = do Util.sleepSeconds 1; print "ping"; return True
-  chan <- OnlyWands.getBroadcastChannelForStreamer onlineCheck "DunkOrSlam"
+  chan <- OnlyWands.getBroadcastChannelForStreamer (isStreamingNoita "DunkOrSlam") "DunkOrSlam"
   streamFromChannel chan print

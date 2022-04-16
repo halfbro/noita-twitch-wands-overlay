@@ -4,6 +4,8 @@ import Data.Aeson
 import Data.Text
 import GHC.Generics
 
+type AppAccessToken = String
+
 data PubSubMessage = PubSubMessage
   { target :: [PubSubTarget],
     broadcaster_id :: Text,
