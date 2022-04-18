@@ -4,9 +4,11 @@ import qualified Util
 import qualified OnlyWands
 import Channel (streamFromChannel)
 import Twitch (isStreamingNoita)
+import App (runApp)
 
 main :: IO ()
 main = do
-  putStrLn "Hello, Haskell!"
-  chan <- OnlyWands.getBroadcastChannelForStreamer (isStreamingNoita "DunkOrSlam") "DunkOrSlam"
-  streamFromChannel chan print
+  --chan <- OnlyWands.getBroadcastChannelForStreamer (isStreamingNoita "Aliasbot") "Aliasbot"
+  --streamFromChannel chan print
+  putStrLn "Starting WebSocket server"
+  runApp
