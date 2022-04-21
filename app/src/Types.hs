@@ -2,6 +2,7 @@ module Types
   ( Inventory,
     SpellName,
     StreamerInformation,
+    blankStreamerInformation,
     Wand,
   )
 where
@@ -35,8 +36,7 @@ instance FromJSON WandStats
 data Wand = Wand
   { stats :: WandStats,
     always_cast :: [SpellName],
-    deck :: [SpellName],
-    _id :: Maybe String
+    deck :: [SpellName]
   }
   deriving (Generic, Show, Eq)
 
@@ -45,3 +45,6 @@ instance ToJSON Wand
 instance FromJSON Wand
 
 type StreamerInformation = ([Wand], Inventory)
+
+blankStreamerInformation :: StreamerInformation
+blankStreamerInformation = ([], [])

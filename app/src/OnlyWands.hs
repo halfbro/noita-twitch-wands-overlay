@@ -7,7 +7,7 @@ where
 
 import qualified Channel
 import Control.Concurrent (forkIO)
-import Control.Concurrent.STM (atomically, newTVarIO, readTVarIO, writeTVar)
+import Control.Concurrent.STM (atomically, newTVarIO, readTVarIO, writeTVar, writeTChan)
 import Control.Monad (void, mzero)
 import Control.Monad.Cont (liftIO)
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), Value (Object), decode, object, (.:), (.=))
@@ -80,7 +80,7 @@ startWandStreamingForStreamer ::
   String ->
   Channel.WriteChannel ->
   Channel.StopToken ->
-  IO Channel.ReadChannel
+  IO (Channel.ReadChannel, StreamerInformation)
 startWandStreamingForStreamer onlineCheck streamerName chan t = do
   stopToken <- newTVarIO False
   let signalStop = do
@@ -90,6 +90,8 @@ startWandStreamingForStreamer onlineCheck streamerName chan t = do
 
   print $ "Start fetching data for " ++ streamerName
 
+  initialWands <- getInitialWandsForStreamer streamerName
+
   -- Start 2 forked threads:
   -- one thread handles listening to onlywands and pushing new data
   -- the other handles watching the stream to check the streamer is
@@ -97,7 +99,6 @@ startWandStreamingForStreamer onlineCheck streamerName chan t = do
   let urlLoc = "/client=" ++ streamerName
   let fetchOnlyWandsStream =
         runSecureClient "onlywands.com" 443 urlLoc $ \conn -> do
-          initialWands <- getInitialWandsForStreamer streamerName
           Channel.broadcastToChannel chan initialWands
 
           let fetchLoop = do
@@ -137,12 +138,13 @@ startWandStreamingForStreamer onlineCheck streamerName chan t = do
   forkIO fetchOnlyWandsStream
   forkIO checkStreamerOnline
 
-  Channel.makeReadChannel chan
+  readChan <- Channel.makeReadChannel chan
+  return (readChan, initialWands)
 
-getBroadcastChannelForStreamer :: IO Bool -> String -> IO Channel.ReadChannel
+getBroadcastChannelForStreamer :: IO Bool -> String -> IO (Channel.ReadChannel, StreamerInformation)
 getBroadcastChannelForStreamer onlineCheck streamerName = do
   channel <- Channel.getChannel streamerName
   case channel of
-    Channel.Existing readChan -> return readChan
+    Channel.Existing existing -> return existing
     Channel.NewBroadcast (newChan, token) -> do
       startWandStreamingForStreamer onlineCheck streamerName newChan token

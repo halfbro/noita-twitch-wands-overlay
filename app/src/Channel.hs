@@ -19,24 +19,24 @@ import Control.Concurrent.STM
     readTChan,
     writeTChan,
   )
-import GHC.IO (throwIO, unsafePerformIO)
+import GHC.IO (unsafePerformIO)
 import StmContainers.Map as StmMap (Map, delete, insert, lookup, newIO)
-import Types (Inventory, StreamerInformation, Wand)
+import Types (StreamerInformation, blankStreamerInformation)
 
 data ChannelMessage
   = Data StreamerInformation
   | Closing
 
-newtype WriteChannel = WriteChannel (TChan ChannelMessage)
+newtype WriteChannel = WriteChannel (TChan ChannelMessage, String)
 
 newtype ReadChannel = ReadChannel (TChan ChannelMessage)
 
 newtype StopToken = Token String
 
-type StreamerDataMap = StmMap.Map String (TChan ChannelMessage)
+type StreamerDataMap = StmMap.Map String (TChan ChannelMessage, StreamerInformation)
 
 data ChannelResult
-  = Existing ReadChannel
+  = Existing (ReadChannel, StreamerInformation)
   | NewBroadcast (WriteChannel, StopToken)
 
 {-# NOINLINE writableChannels #-}
@@ -44,10 +44,13 @@ writableChannels :: StreamerDataMap
 writableChannels = unsafePerformIO StmMap.newIO
 
 makeReadChannel :: WriteChannel -> IO ReadChannel
-makeReadChannel (WriteChannel chan) = atomically $ ReadChannel <$> dupTChan chan
+makeReadChannel (WriteChannel (chan, _)) = atomically $ ReadChannel <$> dupTChan chan
 
 broadcastToChannel :: WriteChannel -> StreamerInformation -> IO ()
-broadcastToChannel (WriteChannel chan) = atomically . writeTChan chan . Data
+broadcastToChannel (WriteChannel (chan, name)) info =
+  atomically $ do
+    StmMap.insert (chan, info) name writableChannels
+    writeTChan chan $ Data info
 
 streamFromChannel :: ReadChannel -> (StreamerInformation -> IO ()) -> IO ()
 streamFromChannel (ReadChannel chan) f = do
@@ -65,7 +68,7 @@ stopChannel (Token chanName) = atomically $ do
   chan <- StmMap.lookup chanName writableChannels
   case chan of
     Nothing -> return () -- consider notifying the user their channel was already deleted somehow
-    Just chan -> do
+    Just (chan, _) -> do
       writeTChan chan Closing
       StmMap.delete chanName writableChannels
 
@@ -73,8 +76,10 @@ getChannel :: String -> IO ChannelResult
 getChannel name = atomically $ do
   writableChannel <- StmMap.lookup name writableChannels
   case writableChannel of
-    Just existing -> Existing . ReadChannel <$> dupTChan existing
+    Just (existing, initial) -> do
+      channel <- ReadChannel <$> dupTChan existing
+      return $ Existing (channel, initial)
     Nothing -> do
       newWritableChan <- newBroadcastTChan
-      StmMap.insert newWritableChan name writableChannels
-      return $ NewBroadcast (WriteChannel newWritableChan, Token name)
+      StmMap.insert (newWritableChan, blankStreamerInformation) name writableChannels
+      return $ NewBroadcast (WriteChannel (newWritableChan, name), Token name)

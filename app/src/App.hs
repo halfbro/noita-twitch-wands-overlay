@@ -37,5 +37,6 @@ shouldAccept conn =
 
 serve :: WS.Connection -> String -> IO ()
 serve conn streamerName= do
-  chan <- OnlyWands.getBroadcastChannelForStreamer (isStreamingNoita streamerName) streamerName
+  (chan, initialInfo) <- OnlyWands.getBroadcastChannelForStreamer (isStreamingNoita streamerName) streamerName
+  WS.sendTextData conn $ encode initialInfo
   streamFromChannel chan (WS.sendTextData conn <$> encode)
