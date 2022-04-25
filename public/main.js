@@ -4435,9 +4435,7 @@ var $elm$core$Set$toList = function (_v0) {
 	return $elm$core$Dict$keys(dict);
 };
 var $elm$core$Basics$GT = {$: 'GT'};
-var $author$project$Main$UpdateColor = function (a) {
-	return {$: 'UpdateColor', a: a};
-};
+var $author$project$Types$blankInfo = _Utils_Tuple2(_List_Nil, _List_Nil);
 var $elm$core$Result$Err = function (a) {
 	return {$: 'Err', a: a};
 };
@@ -5149,112 +5147,179 @@ var $elm$core$Task$perform = F2(
 var $elm$browser$Browser$element = _Browser_element;
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
 var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
+var $elm$json$Json$Decode$string = _Json_decodeString;
+var $author$project$Main$BadWandUpdate = function (a) {
+	return {$: 'BadWandUpdate', a: a};
+};
+var $author$project$Main$ReceivedWandUpdate = function (a) {
+	return {$: 'ReceivedWandUpdate', a: a};
+};
+var $elm$core$Platform$Sub$batch = _Platform_batch;
+var $elm$json$Json$Decode$decodeString = _Json_runOnString;
+var $author$project$Types$Wand = F3(
+	function (stats, alwaysCast, deck) {
+		return {alwaysCast: alwaysCast, deck: deck, stats: stats};
+	});
+var $author$project$Types$WandStats = function (sprite) {
+	return function (reloadTime) {
+		return function (manaChargeSpeed) {
+			return function (spreadDegrees) {
+				return function (shuffleDeckWhenEmpty) {
+					return function (uiName) {
+						return function (manaMax) {
+							return function (actionsPerRound) {
+								return function (speedMultiplier) {
+									return function (fireRateWait) {
+										return function (deckCapacity) {
+											return {actionsPerRound: actionsPerRound, deckCapacity: deckCapacity, fireRateWait: fireRateWait, manaChargeSpeed: manaChargeSpeed, manaMax: manaMax, reloadTime: reloadTime, shuffleDeckWhenEmpty: shuffleDeckWhenEmpty, speedMultiplier: speedMultiplier, spreadDegrees: spreadDegrees, sprite: sprite, uiName: uiName};
+										};
+									};
+								};
+							};
+						};
+					};
+				};
+			};
+		};
+	};
+};
+var $elm$json$Json$Decode$bool = _Json_decodeBool;
+var $elm$json$Json$Decode$float = _Json_decodeFloat;
 var $elm$json$Json$Decode$int = _Json_decodeInt;
-var $author$project$Main$receiveHueBroadcast = _Platform_incomingPort('receiveHueBroadcast', $elm$json$Json$Decode$int);
-var $elm$core$Basics$modBy = _Basics_modBy;
-var $elm$json$Json$Encode$int = _Json_wrap;
-var $author$project$Main$sendHueBroadcast = _Platform_outgoingPort('sendHueBroadcast', $elm$json$Json$Encode$int);
+var $elm$json$Json$Decode$oneOf = _Json_oneOf;
+var $elm$json$Json$Decode$maybe = function (decoder) {
+	return $elm$json$Json$Decode$oneOf(
+		_List_fromArray(
+			[
+				A2($elm$json$Json$Decode$map, $elm$core$Maybe$Just, decoder),
+				$elm$json$Json$Decode$succeed($elm$core$Maybe$Nothing)
+			]));
+};
+var $NoRedInk$elm_json_decode_pipeline$Json$Decode$Pipeline$custom = $elm$json$Json$Decode$map2($elm$core$Basics$apR);
+var $elm$json$Json$Decode$field = _Json_decodeField;
+var $NoRedInk$elm_json_decode_pipeline$Json$Decode$Pipeline$required = F3(
+	function (key, valDecoder, decoder) {
+		return A2(
+			$NoRedInk$elm_json_decode_pipeline$Json$Decode$Pipeline$custom,
+			A2($elm$json$Json$Decode$field, key, valDecoder),
+			decoder);
+	});
+var $author$project$Types$decodeWandStats = A3(
+	$NoRedInk$elm_json_decode_pipeline$Json$Decode$Pipeline$required,
+	'deck_capacity',
+	$elm$json$Json$Decode$int,
+	A3(
+		$NoRedInk$elm_json_decode_pipeline$Json$Decode$Pipeline$required,
+		'fire_rate_wait',
+		$elm$json$Json$Decode$int,
+		A3(
+			$NoRedInk$elm_json_decode_pipeline$Json$Decode$Pipeline$required,
+			'speed_multiplier',
+			$elm$json$Json$Decode$float,
+			A3(
+				$NoRedInk$elm_json_decode_pipeline$Json$Decode$Pipeline$required,
+				'actions_per_round',
+				$elm$json$Json$Decode$int,
+				A3(
+					$NoRedInk$elm_json_decode_pipeline$Json$Decode$Pipeline$required,
+					'mana_max',
+					$elm$json$Json$Decode$float,
+					A3(
+						$NoRedInk$elm_json_decode_pipeline$Json$Decode$Pipeline$required,
+						'ui_name',
+						$elm$json$Json$Decode$maybe($elm$json$Json$Decode$int),
+						A3(
+							$NoRedInk$elm_json_decode_pipeline$Json$Decode$Pipeline$required,
+							'shuffle_deck_when_empty',
+							$elm$json$Json$Decode$bool,
+							A3(
+								$NoRedInk$elm_json_decode_pipeline$Json$Decode$Pipeline$required,
+								'spread_degrees',
+								$elm$json$Json$Decode$float,
+								A3(
+									$NoRedInk$elm_json_decode_pipeline$Json$Decode$Pipeline$required,
+									'mana_charge_speed',
+									$elm$json$Json$Decode$float,
+									A3(
+										$NoRedInk$elm_json_decode_pipeline$Json$Decode$Pipeline$required,
+										'reload_time',
+										$elm$json$Json$Decode$int,
+										A3(
+											$NoRedInk$elm_json_decode_pipeline$Json$Decode$Pipeline$required,
+											'sprite',
+											$elm$json$Json$Decode$string,
+											$elm$json$Json$Decode$succeed($author$project$Types$WandStats))))))))))));
+var $elm$json$Json$Decode$list = _Json_decodeList;
+var $author$project$Types$decodeWand = A3(
+	$NoRedInk$elm_json_decode_pipeline$Json$Decode$Pipeline$required,
+	'deck',
+	$elm$json$Json$Decode$list($elm$json$Json$Decode$string),
+	A3(
+		$NoRedInk$elm_json_decode_pipeline$Json$Decode$Pipeline$required,
+		'always_cast',
+		$elm$json$Json$Decode$list($elm$json$Json$Decode$string),
+		A3(
+			$NoRedInk$elm_json_decode_pipeline$Json$Decode$Pipeline$required,
+			'stats',
+			$author$project$Types$decodeWandStats,
+			$elm$json$Json$Decode$succeed($author$project$Types$Wand))));
+var $elm$json$Json$Decode$index = _Json_decodeIndex;
+var $elm$core$Tuple$pair = F2(
+	function (a, b) {
+		return _Utils_Tuple2(a, b);
+	});
+var $author$project$Types$decodeUpdate = A3(
+	$elm$json$Json$Decode$map2,
+	$elm$core$Tuple$pair,
+	A2(
+		$elm$json$Json$Decode$index,
+		0,
+		$elm$json$Json$Decode$list($author$project$Types$decodeWand)),
+	A2(
+		$elm$json$Json$Decode$index,
+		1,
+		$elm$json$Json$Decode$list($elm$json$Json$Decode$string)));
+var $author$project$Main$twitchBroadcastPort = _Platform_incomingPort('twitchBroadcastPort', $elm$json$Json$Decode$string);
+var $author$project$Main$subscriptions = function (_v0) {
+	return $elm$core$Platform$Sub$batch(
+		_List_fromArray(
+			[
+				$author$project$Main$twitchBroadcastPort(
+				function (str) {
+					var _v1 = A2($elm$json$Json$Decode$decodeString, $author$project$Types$decodeUpdate, str);
+					if (_v1.$ === 'Ok') {
+						var i = _v1.a;
+						return $author$project$Main$ReceivedWandUpdate(i);
+					} else {
+						var e = _v1.a;
+						return $author$project$Main$BadWandUpdate(e);
+					}
+				})
+			]));
+};
+var $elm$core$Debug$log = _Debug_log;
 var $author$project$Main$update = F2(
 	function (msg, model) {
-		if (msg.$ === 'ChangeColor') {
-			var newHue = A2($elm$core$Basics$modBy, 360, model.hue + 20);
+		if (msg.$ === 'ReceivedWandUpdate') {
+			var info = msg.a;
 			return _Utils_Tuple2(
 				_Utils_update(
 					model,
-					{hue: newHue}),
-				$author$project$Main$sendHueBroadcast(newHue));
-		} else {
-			var newHue = msg.a;
-			return _Utils_Tuple2(
-				_Utils_update(
-					model,
-					{hue: newHue}),
+					{streamerWands: info}),
 				$elm$core$Platform$Cmd$none);
+		} else {
+			var e = msg.a;
+			var _v1 = A2($elm$core$Debug$log, 'Unexpected Wand Update error', e);
+			return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 		}
 	});
-var $author$project$Main$ChangeColor = {$: 'ChangeColor'};
 var $elm$html$Html$button = _VirtualDom_node('button');
 var $elm$html$Html$div = _VirtualDom_node('div');
-var $avh4$elm_color$Color$RgbaSpace = F4(
-	function (a, b, c, d) {
-		return {$: 'RgbaSpace', a: a, b: b, c: c, d: d};
-	});
-var $avh4$elm_color$Color$hsla = F4(
-	function (hue, sat, light, alpha) {
-		var _v0 = _Utils_Tuple3(hue, sat, light);
-		var h = _v0.a;
-		var s = _v0.b;
-		var l = _v0.c;
-		var m2 = (l <= 0.5) ? (l * (s + 1)) : ((l + s) - (l * s));
-		var m1 = (l * 2) - m2;
-		var hueToRgb = function (h__) {
-			var h_ = (h__ < 0) ? (h__ + 1) : ((h__ > 1) ? (h__ - 1) : h__);
-			return ((h_ * 6) < 1) ? (m1 + (((m2 - m1) * h_) * 6)) : (((h_ * 2) < 1) ? m2 : (((h_ * 3) < 2) ? (m1 + (((m2 - m1) * ((2 / 3) - h_)) * 6)) : m1));
-		};
-		var b = hueToRgb(h - (1 / 3));
-		var g = hueToRgb(h);
-		var r = hueToRgb(h + (1 / 3));
-		return A4($avh4$elm_color$Color$RgbaSpace, r, g, b, alpha);
-	});
-var $avh4$elm_color$Color$hsl = F3(
-	function (h, s, l) {
-		return A4($avh4$elm_color$Color$hsla, h, s, l, 1.0);
-	});
-var $elm$virtual_dom$VirtualDom$Normal = function (a) {
-	return {$: 'Normal', a: a};
-};
-var $elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
-var $elm$html$Html$Events$on = F2(
-	function (event, decoder) {
-		return A2(
-			$elm$virtual_dom$VirtualDom$on,
-			event,
-			$elm$virtual_dom$VirtualDom$Normal(decoder));
-	});
-var $elm$html$Html$Events$onClick = function (msg) {
-	return A2(
-		$elm$html$Html$Events$on,
-		'click',
-		$elm$json$Json$Decode$succeed(msg));
-};
 var $elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
 var $elm$html$Html$Attributes$style = $elm$virtual_dom$VirtualDom$style;
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
-var $elm$core$String$concat = function (strings) {
-	return A2($elm$core$String$join, '', strings);
-};
-var $elm$core$String$fromFloat = _String_fromNumber;
-var $elm$core$Basics$round = _Basics_round;
-var $avh4$elm_color$Color$toCssString = function (_v0) {
-	var r = _v0.a;
-	var g = _v0.b;
-	var b = _v0.c;
-	var a = _v0.d;
-	var roundTo = function (x) {
-		return $elm$core$Basics$round(x * 1000) / 1000;
-	};
-	var pct = function (x) {
-		return $elm$core$Basics$round(x * 10000) / 100;
-	};
-	return $elm$core$String$concat(
-		_List_fromArray(
-			[
-				'rgba(',
-				$elm$core$String$fromFloat(
-				pct(r)),
-				'%,',
-				$elm$core$String$fromFloat(
-				pct(g)),
-				'%,',
-				$elm$core$String$fromFloat(
-				pct(b)),
-				'%,',
-				$elm$core$String$fromFloat(
-				roundTo(a)),
-				')'
-			]));
-};
+var $elm$core$Debug$toString = _Debug_toString;
 var $author$project$Main$view = function (model) {
 	return A2(
 		$elm$html$Html$div,
@@ -5264,10 +5329,7 @@ var $author$project$Main$view = function (model) {
 				$elm$html$Html$text('Hello World!'),
 				A2(
 				$elm$html$Html$button,
-				_List_fromArray(
-					[
-						$elm$html$Html$Events$onClick($author$project$Main$ChangeColor)
-					]),
+				_List_Nil,
 				_List_fromArray(
 					[
 						$elm$html$Html$text('Change Color')
@@ -5276,31 +5338,24 @@ var $author$project$Main$view = function (model) {
 				$elm$html$Html$div,
 				_List_fromArray(
 					[
-						A2(
-						$elm$html$Html$Attributes$style,
-						'backgroundColor',
-						$avh4$elm_color$Color$toCssString(
-							A3($avh4$elm_color$Color$hsl, model.hue / 360.0, 0.5, 0.5))),
 						A2($elm$html$Html$Attributes$style, 'height', '100px')
 					]),
 				_List_fromArray(
 					[
-						$elm$html$Html$text('asdf')
+						$elm$html$Html$text(
+						$elm$core$Debug$toString(model.streamerWands))
 					]))
 			]));
 };
 var $author$project$Main$main = $elm$browser$Browser$element(
 	{
-		init: function (_v0) {
+		init: function (channelId) {
 			return _Utils_Tuple2(
-				{hue: 0},
+				{streamerId: channelId, streamerWands: $author$project$Types$blankInfo},
 				$elm$core$Platform$Cmd$none);
 		},
-		subscriptions: function (_v1) {
-			return $author$project$Main$receiveHueBroadcast($author$project$Main$UpdateColor);
-		},
+		subscriptions: $author$project$Main$subscriptions,
 		update: $author$project$Main$update,
 		view: $author$project$Main$view
 	});
-_Platform_export({'Main':{'init':$author$project$Main$main(
-	$elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});}(this));
+_Platform_export({'Main':{'init':$author$project$Main$main($elm$json$Json$Decode$string)(0)}});}(this));
