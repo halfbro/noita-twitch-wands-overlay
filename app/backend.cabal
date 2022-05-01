@@ -54,6 +54,7 @@ executable backend-app
       , cache
       , clock
       , containers
+      , data-default
       , hashable
       , http-client
       , http-client-tls

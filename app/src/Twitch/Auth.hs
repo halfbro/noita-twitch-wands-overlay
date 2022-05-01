@@ -30,10 +30,12 @@ import qualified Data.ByteString.Base64.Lazy as B64
 import qualified Data.ByteString.Lazy as L
 import Data.Either (fromRight)
 import qualified Data.HashMap.Strict as HM
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Encoding (encodeUtf8)
-import Data.Time (addUTCTime, getCurrentTime)
+import Data.Time (UTCTime, addUTCTime, getCurrentTime)
+import Debug.Trace (trace)
 import GHC.Exception (errorCallException)
 import GHC.Generics (Generic)
 import GHC.TopHandler (runIO)
@@ -59,11 +61,12 @@ import Servant.Client (ClientEnv, ClientError (ConnectionError), ClientM, client
 import Servant.Client.Streaming (ClientError)
 import qualified System.Environment
 import qualified System.IO.Unsafe as System.IO
-import Twitch.Types
-import Util (roundUTCTime, toLazyBytestring, toBytestring)
-import Prelude hiding (exp)
-import Twitch.Secrets (twitchJwtSecret, twitchClientId)
 import Twitch.AppAccessTokenCache (getAppAccessToken)
+import Twitch.Secrets (twitchClientId, twitchJwtSecret)
+import Twitch.Types
+import Util (roundUTCTime, toBytestring, toLazyBytestring)
+import qualified Util as Utils
+import Prelude hiding (exp)
 
 twitchJwk = fromOctets . B64.decodeLenient . toLazyBytestring $ twitchJwtSecret
 
@@ -88,7 +91,23 @@ instance ToJSON TwitchJwt
 
 instance FromJSON TwitchJwt
 
-{-
+makeTwitchJwt :: String -> IO TwitchJwt
+makeTwitchJwt channelId = do
+  expiryDate <- addUTCTime 10 <$> Utils.nowRounded
+  return
+    TwitchJwt
+      { exp = NumericDate expiryDate,
+        user_id = "21194124", -- owner of extension
+        opaque_user_id = "21194124",
+        role = "external",
+        channel_id = Just $ Channel $ T.pack channelId, -- target channel
+        pubsub_perms =
+          PubSubPerms
+            { send = [Broadcast],
+              listen = []
+            }
+      }
+
 instance ToJWT TwitchJwt
 
 instance FromJWT TwitchJwt where
@@ -119,19 +138,17 @@ instance FromJWT TwitchJwt where
           role <- getClaim "role"
 
           opaque_user_id <- getClaim "opaque_user_id"
-          user_id <- getClaim "user_id"
           pubsub_perms <- getClaim "pubsub_perms"
 
           return $
             TwitchJwt
               { exp = expires,
-                user_id = user_id,
+                user_id = "21194124",
                 opaque_user_id = opaque_user_id,
                 role = role,
                 channel_id = channel_id,
                 pubsub_perms = pubsub_perms
               }
--}
 
 type WithTwitchClientJwt a = Auth '[Bearer] Token :> Header "Client-Id" String :> a
 

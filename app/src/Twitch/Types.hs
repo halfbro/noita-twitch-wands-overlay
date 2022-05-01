@@ -3,6 +3,7 @@ module Twitch.Types where
 import Data.Aeson
 import Data.Text
 import GHC.Generics
+import Data.Maybe (fromMaybe)
 
 type AppAccessToken = String
 
@@ -15,6 +16,15 @@ data PubSubMessage = PubSubMessage
   deriving (Eq, Show, Generic)
 
 instance ToJSON PubSubMessage
+
+broadcastMessage :: PubSubMessage
+broadcastMessage =
+  PubSubMessage
+    { target = [Broadcast],
+      broadcaster_id = "",
+      is_global_broadcast = False,
+      message = ""
+    }
 
 data ChannelId
   = Channel Text
@@ -47,11 +57,17 @@ instance FromJSON PubSubTarget where
   parseJSON (String s) = return $ Whisper s
   parseJSON _ = fail "pubsub permission is not a string"
 
-newtype PubSubPerms = PubSubPerms
-  { send :: [PubSubTarget]
+data PubSubPerms = PubSubPerms
+  { send :: [PubSubTarget],
+    listen :: [PubSubTarget]
   }
   deriving (Eq, Show, Generic)
 
 instance ToJSON PubSubPerms
 
-instance FromJSON PubSubPerms
+instance FromJSON PubSubPerms where
+  parseJSON = withObject "PubSubPerms" $ \obj -> do
+    send <- fromMaybe [] <$> obj .:? "send"
+    listen <- obj .: "listen"
+    return $ PubSubPerms {send = send, listen = listen}
+

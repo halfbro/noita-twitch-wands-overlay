@@ -22,5 +22,10 @@ sleepSeconds secs =
 roundUTCTime :: UTCTime -> UTCTime
 roundUTCTime = posixSecondsToUTCTime . fromIntegral . truncate . utcTimeToPOSIXSeconds
 
+nowRounded :: IO UTCTime
+nowRounded = roundUTCTime <$> getCurrentTime
+
+-----------
+
 testDate :: NumericDate
 testDate = NumericDate (UTCTime (fromGregorian 2 2 2) $ timeOfDayToTime (TimeOfDay 0 0 0))

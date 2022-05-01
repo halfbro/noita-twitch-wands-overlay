@@ -1,14 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module OnlyWands
-  ( getBroadcastChannelForStreamer,
+  ( getWandInfoForStreamer,
   )
 where
 
 import qualified Channel
 import Control.Concurrent (forkIO)
-import Control.Concurrent.STM (atomically, newTVarIO, readTVarIO, writeTVar, writeTChan)
-import Control.Monad (void, mzero)
+import Control.Concurrent.STM (atomically, newTVarIO, readTVarIO, writeTChan, writeTVar)
+import Control.Monad (mzero, void)
 import Control.Monad.Cont (liftIO)
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), Value (Object), decode, object, (.:), (.=))
 import qualified Data.ByteString as S
@@ -29,6 +29,8 @@ import Network.HTTP.Req
     (/~),
   )
 import qualified Network.WebSockets as WS
+import System.Timeout (timeout)
+import qualified Twitch
 import Types (Inventory, StreamerInformation (..), Wand)
 import qualified Util
 import Wuss (runSecureClient)
@@ -76,12 +78,13 @@ getInitialWandsForStreamer streamerName = do
   return . fromMaybe ([], []) $ parseWandFromHttpResponse response
 
 startWandStreamingForStreamer ::
-  IO Bool ->
+  (String -> IO Bool) ->
   String ->
-  Channel.WriteChannel ->
+  Channel.WriteChannel StreamerInformation ->
   Channel.StopToken ->
-  IO (Channel.ReadChannel, StreamerInformation)
-startWandStreamingForStreamer onlineCheck streamerName chan t = do
+  IO StreamerInformation
+startWandStreamingForStreamer onlineCheck streamerId chan t = do
+  streamerName <- Twitch.getTwitchUsername streamerId
   stopToken <- newTVarIO False
   let signalStop = do
         print $ "Stop signalled for " ++ streamerName
@@ -108,14 +111,15 @@ startWandStreamingForStreamer onlineCheck streamerName chan t = do
                     print "Closing socket"
                     WS.sendClose conn ("Closing" :: S.ByteString)
                   else do
-                    msg <- WS.receiveData conn
-                    case decode msg of
-                      Nothing -> return ()
+                    msg <- fmap (>>= decode) $ timeout 1_000_000 $ WS.receiveData conn
+                    case msg of
+                      Nothing -> return () -- Ignore messages we can't decode or get timed out
                       Just
                         SocketData
                           { wands = wands,
                             inventory = inventory
                           } -> do
+                          print $ "Received wand update for " ++ streamerName
                           Channel.broadcastToChannel chan (wands, inventory)
                     fetchLoop
           fetchLoop
@@ -130,21 +134,22 @@ startWandStreamingForStreamer onlineCheck streamerName chan t = do
 
   let checkStreamerOnline = do
         Util.sleepSeconds 30
-        online <- onlineCheck
+        online <- onlineCheck streamerName
         if not online
           then signalStop
           else checkStreamerOnline
 
+  readChan <- Channel.makeReadChannel chan
+
   forkIO fetchOnlyWandsStream
   forkIO checkStreamerOnline
+  forkIO $ Channel.streamFromChannel readChan (Twitch.sendWandInfoBroadcast streamerId)
 
-  readChan <- Channel.makeReadChannel chan
-  return (readChan, initialWands)
+  return initialWands
 
-getBroadcastChannelForStreamer :: IO Bool -> String -> IO (Channel.ReadChannel, StreamerInformation)
-getBroadcastChannelForStreamer onlineCheck streamerName = do
-  channel <- Channel.getChannel streamerName
+getWandInfoForStreamer :: String -> IO StreamerInformation
+getWandInfoForStreamer streamerId = do
+  channel <- Channel.getChannel streamerId
   case channel of
     Channel.Existing existing -> return existing
-    Channel.NewBroadcast (newChan, token) -> do
-      startWandStreamingForStreamer onlineCheck streamerName newChan token
+    Channel.NewBroadcast newChan token -> startWandStreamingForStreamer Twitch.isStreamingNoita streamerId newChan token

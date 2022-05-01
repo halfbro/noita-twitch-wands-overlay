@@ -6,8 +6,9 @@ module Twitch.Api
     getChannelInformation,
     getActiveStreamById,
     getActiveStreamByName,
-    TwitchResponse(..),
-    StreamInformation(..),
+    TwitchResponse (..),
+    StreamInformation (..),
+    ChannelInformation(..),
   )
 where
 
@@ -72,8 +73,7 @@ data ChannelInformation = ChannelInformation
 instance FromJSON ChannelInformation
 
 data StreamInformation = StreamInformation
-  { 
-    user_id :: String,
+  { user_id :: String,
     user_login :: String,
     user_name :: String,
     game_id :: String
@@ -123,26 +123,3 @@ getActiveStreamByName :: String -> IO (Either String (TwitchResponse StreamInfor
         :<|> getActiveStreamById'
         :<|> getActiveStreamByName' =
           client twitchApi
-
-{-
-_testJwt =
-  TwitchJwt
-    { exp = testDate,
-      user_id = "21194124", -- owner of extension
-      opaque_user_id = "21194124",
-      role = "external",
-      channel_id = Just $ Channel "21194124", -- target channel
-      pubsub_perms =
-        PubSubPerms
-          { send = [Broadcast]
-          }
-    }
-
-_testData =
-  PubSubMessage
-    { target = [Broadcast],
-      broadcaster_id = "21194124", -- target channel
-      is_global_broadcast = False,
-      message = "test broadcast"
-    }
--}
