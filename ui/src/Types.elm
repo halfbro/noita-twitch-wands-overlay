@@ -2,6 +2,8 @@ module Types exposing (..)
 
 import Json.Decode as JD exposing (Decoder, bool, float, index, int, list, map2, maybe, string)
 import Json.Decode.Pipeline exposing (required)
+import Dict exposing (Dict)
+import Json.Decode exposing (dict)
 
 
 type alias WandInformation =
@@ -63,16 +65,35 @@ decodeWand =
         |> required "always_cast" (list string)
         |> required "deck" (list string)
 
-
 type alias StreamerInformation =
-    ( List Wand, Inventory )
+    { wands : List Wand, inventory : Inventory }
 
 
 blankInfo : StreamerInformation
 blankInfo =
-    ( [], [] )
+    { wands = [], inventory = [] }
 
 
 decodeUpdate : Decoder StreamerInformation
 decodeUpdate =
-    map2 Tuple.pair (index 0 (list decodeWand)) (index 1 (list string))
+    map2 StreamerInformation (index 0 (list decodeWand)) (index 1 (list string))
+
+
+type alias Spell =
+    { name : String
+    , description : String
+    , meta : Dict String Int
+    , sprite : String
+    }
+
+
+decodeSpell : Decoder Spell
+decodeSpell =
+    JD.succeed Spell
+        |> required "name" string
+        |> required "description" string
+        |> required "meta" (dict int)
+        |> required "sprite" string
+
+decodeSpellData : Decoder (Dict String Spell)
+decodeSpellData = dict decodeSpell
