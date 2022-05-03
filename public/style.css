@@ -4,11 +4,27 @@
 }
 
 html {
-    background-color: black;
+    background-color: rgba(11, 8, 8, 1.0);
     color: white;
     font-size: 1.2rem;
     font-family: 'noita';
     -webkit-font-smoothing: none;
+}
+
+p {
+    margin: 0px;
+}
+
+table {
+    width: 100%;
+    padding-right: 10px;
+    padding-left: 10px;
+}
+
+.wands-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    overflow: auto;
 }
 
 .stat {
@@ -16,8 +32,39 @@ html {
 }
 
 .wand {
+    display: flex;
+    flex-direction: column;
+    width: 400px;
+}
+
+.wand-upper-section {
     display: grid;
-    grid-template-columns: 1fr 1fr 2fr;
+    grid-template-columns: 2fr 1fr;
+    padding-bottom: 20px;
+}
+
+.always-cast {
+    padding-bottom: 20px;
+}
+
+.spell-deck {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.spell-slot {
+    width: 36px;
+    height: 36px;
+    position: relative;
+    background-size: cover;
+    background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAmklEQVQ4jWNgoDJghDEq3S3+w9hHXn6+bSPOq0osm4GBgaF95wlGuIGV7hb/j7z8fJsSl9mI86q27zzByMTAwMDw7OUXSsxiQDaDiWKT0AATAwMDwz2G/xR5F9kMJgYGiP8pNRBmBm3CcNTLZIFRLw92L//8/YdiA2FmwAvYCG0NeAH7lJX5tvTvv6rEshkYGBhWXL0BN4uqAAB3tmuIr9eIsgAAAABJRU5ErkJggg==");
+    image-rendering: pixelated;
+}
+
+.spell-sprite {
+    width: 30px;
+    transform: translate(3px, 3px);
 }
 
 .wand-image {

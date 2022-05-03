@@ -4,6 +4,7 @@ import Json.Decode as JD exposing (Decoder, bool, float, index, int, list, map2,
 import Json.Decode.Pipeline exposing (required)
 import Dict exposing (Dict)
 import Json.Decode exposing (dict)
+import Json.Decode.Pipeline exposing (optional)
 
 
 type alias WandInformation =
@@ -82,9 +83,17 @@ decodeUpdate =
 type alias Spell =
     { name : String
     , description : String
-    , meta : Dict String Int
+    , meta : Dict String Float
     , sprite : String
     }
+
+
+type alias SpellData =
+    Dict SpellName Spell
+
+
+type alias WandSprites =
+    Dict String String
 
 
 decodeSpell : Decoder Spell
@@ -92,8 +101,5 @@ decodeSpell =
     JD.succeed Spell
         |> required "name" string
         |> required "description" string
-        |> required "meta" (dict int)
+        |> optional "meta" (dict float) Dict.empty
         |> required "sprite" string
-
-decodeSpellData : Decoder (Dict String Spell)
-decodeSpellData = dict decodeSpell

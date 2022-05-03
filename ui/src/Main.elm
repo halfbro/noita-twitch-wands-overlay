@@ -7,6 +7,7 @@ import Html.Attributes exposing (..)
 import Json.Decode exposing (Error, Value, decodeString, decodeValue, dict, string)
 import List exposing (length)
 import Result exposing (withDefault)
+import Round as Round
 import String exposing (fromFloat, fromInt)
 import Types exposing (..)
 
@@ -57,7 +58,7 @@ init flags =
             Model
                 blankInfo
                 flags.channelId
-                (withDefault empty <| decodeValue decodeSpellData flags.spellData)
+                (withDefault empty <| decodeValue (dict decodeSpell) flags.spellData)
                 (withDefault empty <| decodeValue (dict string) flags.wandSprites)
     in
     ( m, Cmd.none )
@@ -66,14 +67,6 @@ init flags =
 type Msg
     = ReceivedWandUpdate StreamerInformation
     | BadWandUpdate Error
-
-
-type alias SpellData =
-    Dict String Spell
-
-
-type alias WandSprites =
-    Dict String String
 
 
 type alias Model =
@@ -101,7 +94,7 @@ update msg model =
 view : Model -> Html msg
 view model =
     div []
-        [ div [] (List.map (viewWand model.spellData model.wandSprites) model.streamerInfo.wands)
+        [ div [ class "wands-container" ] (List.map (viewWand model.spellData model.wandSprites) model.streamerInfo.wands)
         ]
 
 
@@ -143,7 +136,7 @@ viewWandStats wand =
             in
             fromInt seconds ++ "." ++ fromInt remainder
     in
-    section [ class "wand-stats" ]
+    div [ class "wand-stats" ]
         [ table []
             [ trStat "Shuffle" <|
                 if stats.shuffleDeckWhenEmpty then
@@ -157,9 +150,44 @@ viewWandStats wand =
             , trStat "Mana Max" <| fromFloat stats.manaMax
             , trStat "Mana chg spd" <| fromFloat stats.manaChargeSpeed
             , trStat "Capacity" <| fromInt <| stats.deckCapacity - length wand.alwaysCast
-            , trStat "Spread" <| fromFloat stats.spreadDegrees
+            , trStat "Spread" <| Round.round 1 stats.spreadDegrees ++ " DEG"
             ]
         ]
+
+
+viewSpellSlot : Maybe Spell -> Html msg
+viewSpellSlot spell =
+    div [ class "spell-slot" ] <|
+        case spell of
+            Nothing ->
+                []
+
+            Just actualSpell ->
+                [ img [ class "spell-sprite", src <| "data:image/png;base64, " ++ actualSpell.sprite ] []
+                ]
+
+
+viewSpellDeck : SpellData -> List SpellName -> Html msg
+viewSpellDeck spellData spellNames =
+    let
+        spells =
+            spellNames
+                |> List.map (\name -> Dict.get name spellData)
+    in
+    div [ class "spell-deck" ] <| List.map viewSpellSlot spells
+
+
+viewWandAlwaysCast : SpellData -> Wand -> Html msg
+viewWandAlwaysCast spellData wand =
+    case wand.alwaysCast of
+        [] ->
+            div [] []
+
+        spells ->
+            div [ class "always-cast" ]
+                [ p [] [ text "Always Cast:" ]
+                , viewSpellDeck spellData spells
+                ]
 
 
 viewWand : SpellData -> WandSprites -> Wand -> Html msg
@@ -173,6 +201,18 @@ viewWand spellData wandSprites wand =
 
         statsSection =
             viewWandStats wand
+
+        alwaysCastSection =
+            viewWandAlwaysCast spellData wand
+
+        deckPadding =
+            List.repeat (wand.stats.deckCapacity - length wand.alwaysCast - length wand.deck) "0"
+
+        deckSection =
+            div [ class "deck" ]
+                [ p [] [ text "Spells:" ]
+                , viewSpellDeck spellData (wand.deck ++ deckPadding)
+                ]
     in
     div [ class "wand" ]
-        [ statsSection, sprite ]
+        [ div [ class "wand-upper-section" ] [ statsSection, sprite ], alwaysCastSection, deckSection ]
