@@ -3,14 +3,6 @@
     src: url(/noita2.ttf);
 }
 
-html {
-    background-color: rgba(11, 8, 8, 1.0);
-    color: white;
-    font-size: 1.2rem;
-    font-family: 'noita';
-    -webkit-font-smoothing: none;
-}
-
 p {
     margin: 0px;
 }
@@ -21,26 +13,56 @@ table {
     padding-left: 10px;
 }
 
+#magic-hover-box {
+    position: relative;
+    height: 30px;
+    width: 200px;
+    background-color: rgba(128,128,128, 0.3);
+}
+
+#magic-hover-box * {
+    opacity: 0.0;
+    visibility: hidden;
+}
+
+#magic-hover-box:hover * {
+    opacity: 1.0;
+    visibility: visible;
+}
+
 .wands-container {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr 1fr;
     overflow: auto;
+    background-color: rgba(0,0,0,0.5);
+    position: absolute;
+    top: 50px;
+    left: 30px;
+    transition: ease 0.3s;
 }
 
 .stat {
-    padding-right: 26px;
+    padding-right: 18px;
 }
 
 .wand {
     display: flex;
     flex-direction: column;
-    width: 400px;
+    width: max-content;
+    padding: 10px;
+    margin: 10px;
+    border: solid white 3px;
+
+    background-color: rgba(11, 8, 8, 0.9);
+    color: white;
+    font-size: 1.1rem;
+    font-family: 'noita';
 }
 
 .wand-upper-section {
     display: grid;
     grid-template-columns: 2fr 1fr;
-    padding-bottom: 20px;
+    padding: 10px;
 }
 
 .always-cast {

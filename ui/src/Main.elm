@@ -93,8 +93,12 @@ update msg model =
 
 view : Model -> Html msg
 view model =
-    div []
-        [ div [ class "wands-container" ] (List.map (viewWand model.spellData model.wandSprites) model.streamerInfo.wands)
+    div [ id "magic-hover-box"
+        , style "top" "30px"
+        , style "left" "30px"
+        ]
+        [ div [ class "wands-container" ]
+            (List.map (viewWand model.spellData model.wandSprites) model.streamerInfo.wands)
         ]
 
 
@@ -124,17 +128,7 @@ viewWandStats wand =
 
         showTimeInteger : Int -> String
         showTimeInteger i =
-            let
-                hundreths =
-                    round (toFloat i * 5 / 3)
-
-                seconds =
-                    hundreths // 100
-
-                remainder =
-                    remainderBy 100 hundreths
-            in
-            fromInt seconds ++ "." ++ fromInt remainder
+            Round.round 2 <| (toFloat i * 5 / 300)
     in
     div [ class "wand-stats" ]
         [ table []
@@ -181,7 +175,7 @@ viewWandAlwaysCast : SpellData -> Wand -> Html msg
 viewWandAlwaysCast spellData wand =
     case wand.alwaysCast of
         [] ->
-            div [] []
+            text ""
 
         spells ->
             div [ class "always-cast" ]
