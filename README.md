@@ -12,7 +12,7 @@ You also need to be approved in order to use it on a stream enabled for testing.
 Create a Github issue!
 
 # Feature Requests
-Create a Github issue with your feature request! Please start the name with `Request: ` and tag it with the `feature-request` tag.
+Create a Github issue with your feature request! Please start the name with `Request: ` and tag it with the `enhancement` tag.
 
 # Building and Contributing
-See CONTRIBUTING.md for how to get build from source and get set up in your own dev environment. Easy issues and bug fixes are tagged `good-first-issue`.
+See CONTRIBUTING.md for how to get build from source and get set up in your own dev environment. Easy issues and bug fixes are tagged `good first issue`.
