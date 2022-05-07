@@ -1,10 +1,8 @@
 module Types exposing (..)
 
-import Json.Decode as JD exposing (Decoder, bool, float, index, int, list, map2, maybe, string)
-import Json.Decode.Pipeline exposing (required)
 import Dict exposing (Dict)
-import Json.Decode exposing (dict)
-import Json.Decode.Pipeline exposing (optional)
+import Json.Decode as JD exposing (Decoder, bool, dict, float, index, int, list, map2, maybe, string)
+import Json.Decode.Pipeline exposing (optional, required)
 
 
 type alias WandInformation =
@@ -65,6 +63,7 @@ decodeWand =
         |> required "stats" decodeWandStats
         |> required "always_cast" (list string)
         |> required "deck" (list string)
+
 
 type alias StreamerInformation =
     { wands : List Wand, inventory : Inventory }

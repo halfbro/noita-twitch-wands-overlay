@@ -19,7 +19,8 @@ import Network.Wai.Middleware.Cors
   )
 import qualified OnlyWands
 import Servant
-  ( Context (EmptyContext, (:.)),
+  ( Capture,
+    Context (EmptyContext, (:.)),
     Get,
     Handler,
     JSON,
@@ -29,14 +30,14 @@ import Servant
     serveWithContext,
     type (:>),
   )
-import Servant.API (Capture)
-import Servant.Auth (Auth, JWT)
 import Servant.Auth.Server
-  ( AuthResult (Authenticated),
+  ( Auth,
+    AuthResult (Authenticated),
+    JWT,
     ThrowAll (throwAll),
     defaultCookieSettings,
   )
-import Twitch.Auth
+import Twitch.Auth (TwitchJwt, twitchJwtSettings)
 import Types (StreamerInformation)
 
 type RawApi =

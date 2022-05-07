@@ -1,14 +1,14 @@
 port module Main exposing (..)
 
 import Browser
-import Dict exposing (Dict, empty)
+import Dict exposing (empty)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Json.Decode exposing (Error, Value, decodeString, decodeValue, dict, string)
 import List exposing (length)
 import Result exposing (withDefault)
 import Round as Round
-import String exposing (fromFloat, fromInt)
+import String exposing (fromInt)
 import Types exposing (..)
 
 
@@ -130,7 +130,7 @@ viewWandBrief spellData wandSprites wand =
                 ]
             ]
         , viewSpellDeck spellData (wand.deck ++ deckPadding)
-        , div [class "wand-detail" ] [viewWandDetails spellData wandSprites wand]
+        , div [ class "wand-detail" ] [ viewWandDetails spellData wandSprites wand ]
         ]
 
 

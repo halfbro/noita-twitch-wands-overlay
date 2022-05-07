@@ -1,8 +1,7 @@
 module Util where
 
 import Control.Concurrent (threadDelay)
-import Crypto.JWT (NumericDate (..))
-import Data.Time (NominalDiffTime, TimeOfDay (TimeOfDay), UTCTime (UTCTime), addUTCTime, fromGregorian, getCurrentTime, timeOfDayToTime)
+import Data.Time (UTCTime (UTCTime), getCurrentTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime, utcTimeToPOSIXSeconds)
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
@@ -24,8 +23,3 @@ roundUTCTime = posixSecondsToUTCTime . fromIntegral . truncate . utcTimeToPOSIXS
 
 nowRounded :: IO UTCTime
 nowRounded = roundUTCTime <$> getCurrentTime
-
------------
-
-testDate :: NumericDate
-testDate = NumericDate (UTCTime (fromGregorian 2 2 2) $ timeOfDayToTime (TimeOfDay 0 0 0))

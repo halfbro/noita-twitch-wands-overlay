@@ -4,10 +4,7 @@
 
 module Twitch.Auth where
 
-import Control.Exception (Exception (toException), SomeException (SomeException), throw)
 import Control.Lens (view, (&), (?~))
-import Control.Lens.Getter (view)
-import Control.Monad (void)
 import Control.Monad.Except (runExceptT)
 import Crypto.JOSE
   ( Error,
@@ -15,73 +12,54 @@ import Crypto.JOSE
     fromOctets,
     makeJWSHeader,
   )
-import Crypto.JOSE.Error ()
-import Crypto.JWT (ClaimsSet, NumericDate (NumericDate), SignedJWT, addClaim, claimExp, emptyClaimsSet, signClaims, unregisteredClaims)
+import Crypto.JWT
+  ( ClaimsSet,
+    NumericDate (NumericDate),
+    SignedJWT,
+    addClaim,
+    claimExp,
+    emptyClaimsSet,
+    signClaims,
+    unregisteredClaims,
+  )
 import Data.Aeson
   ( FromJSON,
     Result (Success),
     ToJSON (toJSON),
-    Value (String),
     fromJSON,
   )
 import Data.Bifunctor (first)
-import qualified Data.ByteString as S
 import qualified Data.ByteString.Base64.Lazy as B64
-import qualified Data.ByteString.Lazy as L
-import Data.Either (fromRight)
+import qualified Data.ByteString.Lazy as BL
 import qualified Data.HashMap.Strict as HM
-import Data.Maybe (fromMaybe)
-import Data.Text (Text)
 import qualified Data.Text as T
-import Data.Text.Encoding (encodeUtf8)
 import Data.Time (UTCTime, addUTCTime, getCurrentTime)
-import Debug.Trace (trace)
-import GHC.Exception (errorCallException)
 import GHC.Generics (Generic)
-import GHC.TopHandler (runIO)
-import Network.HTTP.Client (domainMatches, managerModifyRequest, newManager, requestHeaders)
+import Network.HTTP.Client (newManager)
 import Network.HTTP.Client.TLS (tlsManagerSettings)
-import Network.HTTP.Simple (Request, addRequestHeader, addToRequestQueryString, parseRequest, setRequestMethod)
-import qualified Network.WebSockets as WS
 import Servant
   ( Header,
     JSON,
     NoContent,
-    PostNoContent,
     Proxy (..),
     ReqBody,
     type (:>),
   )
-import Servant.API.ContentTypes (JSON, OctetStream)
-import Servant.Auth (Auth)
 import Servant.Auth.Client (Bearer, Token (Token))
-import Servant.Auth.JWT (FromJWT (decodeJWT), ToJWT)
 import Servant.Auth.Server
-import Servant.Client (ClientEnv, ClientError (ConnectionError), ClientM, client, mkClientEnv, parseBaseUrl, runClientM)
-import Servant.Client.Streaming (ClientError)
-import qualified System.Environment
-import qualified System.IO.Unsafe as System.IO
+import Servant.Client (ClientEnv, ClientM, mkClientEnv, parseBaseUrl, runClientM)
 import Twitch.AppAccessTokenCache (getAppAccessToken)
 import Twitch.Secrets (twitchClientId, twitchJwtSecret)
-import Twitch.Types
-import Util (roundUTCTime, toBytestring, toLazyBytestring)
-import qualified Util as Utils
-import Prelude hiding (exp)
+import Twitch.Types (ChannelId (Channel), PubSubPerms (..), PubSubTarget (Broadcast))
+import Util (nowRounded, roundUTCTime, toBytestring, toLazyBytestring)
 
 twitchJwk = fromOctets . B64.decodeLenient . toLazyBytestring $ twitchJwtSecret
 
---twitchIdEnv :: IO ClientEnv
---twitchIdEnv =
---mkClientEnv <$> manager <*> url
---where
---manager = newManager tlsManagerSettings
---url = parseBaseUrl "https://id.twitch.tv"
-
 data TwitchJwt = TwitchJwt
   { exp :: NumericDate,
-    user_id :: Text,
-    opaque_user_id :: Text,
-    role :: Text,
+    user_id :: T.Text,
+    opaque_user_id :: T.Text,
+    role :: T.Text,
     channel_id :: Maybe ChannelId,
     pubsub_perms :: PubSubPerms
   }
@@ -93,7 +71,7 @@ instance FromJSON TwitchJwt
 
 makeTwitchJwt :: String -> IO TwitchJwt
 makeTwitchJwt channelId = do
-  expiryDate <- addUTCTime 10 <$> Utils.nowRounded
+  expiryDate <- addUTCTime 10 <$> nowRounded
   return
     TwitchJwt
       { exp = NumericDate expiryDate,
@@ -113,7 +91,7 @@ instance ToJWT TwitchJwt
 instance FromJWT TwitchJwt where
   decodeJWT claims =
     let cs = view unregisteredClaims claims
-        getClaim :: FromJSON a => Text -> Either Text a
+        getClaim :: FromJSON a => T.Text -> Either T.Text a
         getClaim s =
           case HM.lookup s cs of
             Nothing -> Left $ "No claim '" <> s <> "' exists"
@@ -191,6 +169,6 @@ runWithTwitchAppTokenAuth f args = do
 
 runWithTwitchJwtAuth :: (Token -> Maybe String -> a -> ClientM b) -> TwitchJwt -> a -> IO (Either String b)
 runWithTwitchJwtAuth f jwt args = do
-  token <- Token . WS.fromLazyByteString . encodeCompact <$> encodeTwitchJwt jwt
+  token <- Token . BL.toStrict . encodeCompact <$> encodeTwitchJwt jwt
   res <- runClientM (f token (Just twitchClientId) args) =<< twitchApiEnv
   return $ first show res

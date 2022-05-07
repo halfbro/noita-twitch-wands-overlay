@@ -8,8 +8,8 @@ import Data.Text.Encoding (decodeUtf8)
 import Servant (NoContent (NoContent))
 import Twitch.Api
   ( ChannelInformation (broadcaster_name),
+    StreamInformation (game_id),
     TwitchResponse (TwitchResponse, _data),
-    StreamInformation(game_id),
     getActiveStreamByName,
     getChannelInformation,
     sendPubSubMessage,
@@ -17,7 +17,6 @@ import Twitch.Api
 import Twitch.Auth
   ( TwitchJwt (TwitchJwt),
     makeTwitchJwt,
-    twitchJwtSettings,
   )
 import Twitch.Types
   ( PubSubMessage (broadcaster_id, message),

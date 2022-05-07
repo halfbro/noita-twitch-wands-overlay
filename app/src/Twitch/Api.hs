@@ -14,7 +14,7 @@ where
 
 import Control.Applicative ((<|>))
 import Control.Monad (mzero)
-import Data.Aeson (FromJSON (parseJSON), Value (Object), withObject, (.!=), (.:), (.:?))
+import Data.Aeson (FromJSON (parseJSON), Value (Object), (.:), (.:?))
 import GHC.Generics (Generic)
 import Servant
   ( Get,
@@ -29,7 +29,6 @@ import Servant
     type (:<|>) ((:<|>)),
     type (:>),
   )
-import Servant.Auth.Server (JWTSettings)
 import Servant.Client (client)
 import Twitch.Auth
   ( TwitchJwt (..),
@@ -39,7 +38,6 @@ import Twitch.Auth
     runWithTwitchJwtAuth,
   )
 import Twitch.Types (PubSubMessage)
-import Util (testDate)
 
 newtype PaginationInfo = PaginationInfo {cursor :: String}
   deriving (Eq, Show, Generic)

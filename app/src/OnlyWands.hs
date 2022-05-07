@@ -9,7 +9,6 @@ import qualified Channel
 import Control.Concurrent (forkIO)
 import Control.Concurrent.STM (atomically, newTVarIO, readTVarIO, writeTChan, writeTVar)
 import Control.Monad (mzero, void)
-import Control.Monad.Cont (liftIO)
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), Value (Object), decode, object, (.:), (.=))
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L

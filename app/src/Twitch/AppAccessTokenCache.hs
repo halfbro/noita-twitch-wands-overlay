@@ -1,11 +1,16 @@
 module Twitch.AppAccessTokenCache (AppAccessToken, getAppAccessToken) where
 
 import Data.Aeson (FromJSON)
-import Data.Cache
+import Data.Cache ( insert', lookup, newCache, Cache )
 import Data.Int (Int64)
 import GHC.Generics (Generic)
 import Network.HTTP.Simple
-import System.Clock (TimeSpec (TimeSpec), sec)
+    ( parseRequest,
+      addToRequestQueryString,
+      getResponseBody,
+      httpJSON,
+      setRequestMethod )
+import System.Clock (TimeSpec (TimeSpec))
 import System.IO.Unsafe (unsafePerformIO)
 import Twitch.Secrets (twitchClientId, twitchClientSecret)
 import Twitch.Types (AppAccessToken)
