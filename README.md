@@ -1,7 +1,9 @@
 # noita-twitch-wands-overlay
 Twitch overlay extension that shows a streamer's wands in realtime. Hooks into onlywands.com 
 
-# How to use
+# How to install
+Go to Creator Dashboard -> Extensions -> Invite Only, the install the extension there. After it's install, you need to activate it.
+
 For now, the extension is in an alpha state. In order to install it on your stream, I (@halfbro) need to manually add you to the list of users with access to test the extension on Twitch.
 
 In addition, this extension currently relies on the [streamer-wands](https://github.com/soler91/streamer-wands) project. You'll need to install and configure that mod in Noita.
