@@ -13,31 +13,44 @@ table {
     padding-left: 10px;
 }
 
-#magic-hover-box {
+.magic-hover-box {
     position: relative;
-    height: 30px;
-    width: 200px;
-    background-color: rgba(128,128,128, 0.3);
+    top: 4%;
+    left: 2%;
+    height: 6%;
+    width: 12.8%;
+    border: solid rgba(255,255,255, 0.3);
 }
 
-#magic-hover-box * {
+div.wand-brief div.wand-detail {
     opacity: 0.0;
     visibility: hidden;
 }
 
-#magic-hover-box:hover * {
+div.wand-brief:hover div.wand-detail {
+    opacity: 1.0;
+    visibility: visible;
+}
+
+.magic-hover-box * {
+    opacity: 0.0;
+    visibility: hidden;
+}
+
+.magic-hover-box:hover * {
     opacity: 1.0;
     visibility: visible;
 }
 
 .wands-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr;
+    display: flex;
+    flex-direction: column;
     overflow: auto;
-    background-color: rgba(0,0,0,0.5);
-    position: absolute;
-    top: 50px;
-    left: 30px;
+    position: fixed;
+    top: 12.5%;
+    bottom: 5%;
+    left: 2%;
+    right: 8%;
     transition: ease 0.3s;
 }
 
@@ -45,24 +58,54 @@ table {
     padding-right: 18px;
 }
 
-.wand {
+.wand-brief {
     display: flex;
     flex-direction: column;
     width: max-content;
+    height: fit-content;
+    padding: 10px;
+    margin: 5px;
+    border: solid beige 3px;
+
+    background-color: rgba(11, 8, 8, 0.75);
+    color: white;
+    font-size: 18px;
+    font-family: 'noita';
+    font-family: 'VT323', monospace;
+}
+
+.wand-brief-upper {
+    display: flex;
+    width: max-content;
+    padding-bottom: 10px;
+}
+
+.wand-detail {
+    position: absolute;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.wand {
+    display: flex;
+    flex-direction: column;
+    width: min-content;
+    height: fit-content;
     padding: 10px;
     margin: 10px;
     border: solid white 3px;
 
-    background-color: rgba(11, 8, 8, 0.9);
+    background-color: rgba(11, 8, 8, 0.95);
     color: white;
-    font-size: 1.1rem;
+    font-size: 18px;
     font-family: 'noita';
+    font-family: 'VT323', monospace;
 }
 
 .wand-upper-section {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    padding: 10px;
+    display: flex;
+    width: max-content;
+    padding-bottom: 20px;
 }
 
 .always-cast {
@@ -91,10 +134,12 @@ table {
 
 .wand-image {
     image-rendering: pixelated;
-    width: auto;
-    height: 30%;
-    transform: rotate(-90deg);
+    width: 110px;
     align-self: center;
+}
+
+.rotated {
+    transform: rotate(-90deg);
 }
 
 td.shuffle::before {

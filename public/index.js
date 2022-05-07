@@ -7,7 +7,7 @@ function log(...x) {
 }
 
 function extensionBackendRequest(endpoint, type, body) {
-    return fetch(`${location.protocol}//localhost:7999${endpoint}`, {
+    return fetch(`https://wand-overlay.halfbro.xyz${endpoint}`, {
         method: type,
         headers: {
             "Authorization": `Bearer ${auth.token}`,
