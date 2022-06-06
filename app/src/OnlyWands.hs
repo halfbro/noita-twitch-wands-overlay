@@ -86,11 +86,11 @@ startWandStreamingForStreamer onlineCheck streamerId chan t = do
   streamerName <- Twitch.getTwitchUsername streamerId
   stopToken <- newTVarIO False
   let signalStop = do
-        print $ "Stop signalled for " ++ streamerName
+        putStrLn $ "Stop signalled for " ++ streamerName
         atomically $ writeTVar stopToken True
         Channel.stopChannel t
 
-  print $ "Start fetching data for " ++ streamerName
+  putStrLn $ "Start fetching data for " ++ streamerName
 
   initialWands <- getInitialWandsForStreamer streamerName
 
@@ -107,7 +107,7 @@ startWandStreamingForStreamer onlineCheck streamerId chan t = do
                 stopSignalled <- readTVarIO stopToken
                 if stopSignalled
                   then do
-                    print "Closing socket"
+                    putStrLn "Closing socket"
                     WS.sendClose conn ("Closing" :: S.ByteString)
                   else do
                     msg <- fmap (>>= decode) $ timeout 1_000_000 $ WS.receiveData conn
@@ -118,15 +118,15 @@ startWandStreamingForStreamer onlineCheck streamerId chan t = do
                           { wands = wands,
                             inventory = inventory
                           } -> do
-                          print $ "Received wand update for " ++ streamerName
+                          putStrLn $ "Received wand update for " ++ streamerName
                           Channel.broadcastToChannel chan (wands, inventory)
                     fetchLoop
           fetchLoop
 
-          print $ "End fetching data for " ++ streamerName
+          putStrLn $ "End fetching data for " ++ streamerName
 
           let clearInFlightMessages = do
-                print $ "Clearing websocket for " ++ streamerName
+                putStrLn $ "Clearing websocket for " ++ streamerName
                 void $ WS.receiveDataMessage conn
                 clearInFlightMessages
           clearInFlightMessages

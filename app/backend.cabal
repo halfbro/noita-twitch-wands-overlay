@@ -62,6 +62,7 @@ executable backend-app
       , http-types
       , jose
       , lens
+      , list-t
       , mtl
       , req
       , servant

@@ -1,8 +1,10 @@
 module Main where
 
-import App (runApp)
+import App (runApp, runTui)
+import Control.Concurrent (forkIO)
 
 main :: IO ()
 main = do
   putStrLn "Starting server"
-  runApp
+  forkIO runApp
+  runTui

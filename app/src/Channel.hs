@@ -1,5 +1,6 @@
 module Channel
   ( broadcastToChannel,
+    getAllWritableChannelUsernames,
     getChannel,
     makeReadChannel,
     stopChannel,
@@ -19,9 +20,11 @@ import Control.Concurrent.STM
     readTChan,
     writeTChan,
   )
+import Control.Monad.List (ListT (runListT))
 import Data.Default (Default (def))
 import GHC.IO (unsafePerformIO)
-import StmContainers.Map as StmMap (Map, delete, insert, lookup, newIO)
+import ListT (toList)
+import StmContainers.Map as StmMap (Map, delete, insert, listT, lookup, newIO)
 
 data ChannelMessage a
   = Data a
@@ -42,6 +45,11 @@ data ChannelResult a
 {-# NOINLINE writableChannels #-}
 writableChannels :: StreamerDataMap a
 writableChannels = unsafePerformIO StmMap.newIO
+
+getAllWritableChannelUsernames :: IO [String]
+getAllWritableChannelUsernames = do
+  let usernamesStream = fst <$> StmMap.listT writableChannels
+  atomically $ toList usernamesStream
 
 broadcastToChannel :: WriteChannel a -> a -> IO ()
 broadcastToChannel (WriteChannel chan name) info =
