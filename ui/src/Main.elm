@@ -1,17 +1,17 @@
 port module Main exposing (..)
 
 import Browser
+import Css
 import Dict exposing (empty)
 import Html.Styled exposing (..)
+import Html.Styled.Attributes exposing (class, src)
 import Json.Decode exposing (Error, Value, decodeString, decodeValue, dict, string)
 import List exposing (length)
 import Result exposing (withDefault)
 import Round as Round
+import SingleSlider
 import String exposing (fromInt)
 import Types exposing (..)
-import Css
-import Html.Styled.Attributes exposing (class)
-import Html.Styled.Attributes exposing (src)
 
 
 port twitchBroadcastPort : (String -> msg) -> Sub msg
@@ -22,7 +22,7 @@ port twitchBroadcastPort : (String -> msg) -> Sub msg
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
+subscriptions m =
     Sub.batch
         [ twitchBroadcastPort
             (\str ->
@@ -56,12 +56,27 @@ type alias Flags =
 init : Flags -> ( Model, Cmd msg )
 init flags =
     let
+        newSlider initial onChange =
+            SingleSlider.init
+                { min = 0.0
+                , max = 20.0
+                , step = 0.1
+                , value = initial
+                , onChange = onChange
+                }
+
+        m : Model
         m =
-            Model
-                blankInfo
-                flags.channelId
-                (withDefault empty <| decodeValue (dict decodeSpell) flags.spellData)
-                (withDefault empty <| decodeValue (dict string) flags.wandSprites)
+            { streamerInfo = blankInfo
+            , streamerId = flags.channelId
+            , spellData = withDefault empty <| decodeValue (dict decodeSpell) flags.spellData
+            , wandSprites = withDefault empty <| decodeValue (dict string) flags.wandSprites
+            , wandsStartXSlider = newSlider 2.0 ChangeWandBoxX -- Percent value
+            , wandsStartYSlider = newSlider 4.0 ChangeWandBoxY
+            , wandsBoxWidthSlider = newSlider 13.0 ChangeWandBoxWidth
+            , wandsBoxHeightSlider = newSlider 13.0 ChangeWandBoxHeight
+            , wandsBoxGapSlider = newSlider 3.0 ChangeWandBoxGap
+            }
     in
     ( m, Cmd.none )
 
@@ -69,6 +84,11 @@ init flags =
 type Msg
     = ReceivedWandUpdate StreamerInformation
     | BadWandUpdate Error
+    | ChangeWandBoxX Float
+    | ChangeWandBoxY Float
+    | ChangeWandBoxWidth Float
+    | ChangeWandBoxHeight Float
+    | ChangeWandBoxGap Float
 
 
 type alias Model =
@@ -76,6 +96,11 @@ type alias Model =
     , streamerId : String
     , spellData : SpellData
     , wandSprites : WandSprites
+    , wandsStartXSlider : SingleSlider.SingleSlider Msg
+    , wandsStartYSlider : SingleSlider.SingleSlider Msg
+    , wandsBoxWidthSlider : SingleSlider.SingleSlider Msg
+    , wandsBoxHeightSlider : SingleSlider.SingleSlider Msg
+    , wandsBoxGapSlider : SingleSlider.SingleSlider Msg
     }
 
 
@@ -92,66 +117,108 @@ update msg model =
             in
             ( model, Cmd.none )
 
+        ChangeWandBoxX v ->
+            ( { model | wandsStartXSlider = SingleSlider.update v model.wandsStartXSlider }, Cmd.none )
 
-view : Model -> Html msg
+        ChangeWandBoxY v ->
+            ( { model | wandsStartYSlider = SingleSlider.update v model.wandsStartYSlider }, Cmd.none )
+
+        ChangeWandBoxWidth v ->
+            ( { model | wandsBoxWidthSlider = SingleSlider.update v model.wandsBoxWidthSlider }, Cmd.none )
+
+        ChangeWandBoxHeight v ->
+            ( { model | wandsBoxHeightSlider = SingleSlider.update v model.wandsBoxHeightSlider }, Cmd.none )
+
+        ChangeWandBoxGap v ->
+            ( { model | wandsBoxGapSlider = SingleSlider.update v model.wandsBoxGapSlider }, Cmd.none )
+
+
+view : Model -> Html Msg
 view model =
+    div []
+        [ viewWands model
+        , viewSliders model
+        ]
+
+
+viewSliders : Model -> Html Msg
+viewSliders model =
+    styled div
+        [ Css.displayFlex
+        , Css.flexDirection Css.column
+        , Css.left (Css.pct 2)
+        , Css.top (Css.pct 30)
+        , Css.position Css.absolute
+        ]
+        []
+        [ fromUnstyled <| SingleSlider.view model.wandsStartXSlider
+        , fromUnstyled <| SingleSlider.view model.wandsStartYSlider
+        , fromUnstyled <| SingleSlider.view model.wandsBoxWidthSlider
+        , fromUnstyled <| SingleSlider.view model.wandsBoxHeightSlider
+        , fromUnstyled <| SingleSlider.view model.wandsBoxGapSlider
+        ]
+
+
+viewWands : Model -> Html msg
+viewWands model =
     let
         viewHoverBox : Wand -> Html msg
         viewHoverBox wand =
             styled div
-                [ Css.width (Css.pct 20)
+                [ Css.width (Css.pct <| SingleSlider.fetchValue model.wandsBoxWidthSlider)
                 , Css.border (Css.px 3)
-                , Css.borderStyle (Css.solid)
+                , Css.borderStyle Css.solid
                 , Css.borderColor (Css.rgba 255 255 255 0.9)
                 ]
                 []
                 [ viewWandDetails model.spellData model.wandSprites wand
                 ]
-
     in
     styled div
         [ Css.displayFlex
-        , Css.top (Css.pct 4)
-        , Css.left (Css.pct 2)
-        , Css.height (Css.pct 6)
-        , Css.width (Css.px 300)
-        , Css.property "gap" "4px"
+        , Css.top (Css.pct <| SingleSlider.fetchValue model.wandsStartYSlider)
+        , Css.left (Css.pct <| SingleSlider.fetchValue model.wandsStartXSlider)
+        , Css.height (Css.pct <| SingleSlider.fetchValue model.wandsBoxHeightSlider)
+        , Css.width (Css.px 300) -- TODO: make percentage later
+        , Css.property "gap" <| (String.fromFloat <| SingleSlider.fetchValue model.wandsBoxGapSlider) ++ "%"
         , Css.position Css.absolute
         ]
         []
         (List.map viewHoverBox model.streamerInfo.wands)
 
+
+
 --viewWandBrief : SpellData -> WandSprites -> Wand -> Html msg
 --viewWandBrief spellData wandSprites wand =
-    --let
-        --deckPadding =
-            --List.repeat (wand.stats.deckCapacity - length wand.alwaysCast - length wand.deck) "0"
-    --in
-    --div [ class "wand-brief" ]
-        --[ div [ class "wand-brief-upper" ]
-            --[ viewWandSprite wandSprites wand False
-            --, table []
-                --[ tr []
-                    --[ td [ class "stat" ] [ text "Shuffle" ]
-                    --, td []
-                        --[ text <|
-                            --if wand.stats.shuffleDeckWhenEmpty then
-                                --"Yes"
+--let
+--deckPadding =
+--List.repeat (wand.stats.deckCapacity - length wand.alwaysCast - length wand.deck) "0"
+--in
+--div [ class "wand-brief" ]
+--[ div [ class "wand-brief-upper" ]
+--[ viewWandSprite wandSprites wand False
+--, table []
+--[ tr []
+--[ td [ class "stat" ] [ text "Shuffle" ]
+--, td []
+--[ text <|
+--if wand.stats.shuffleDeckWhenEmpty then
+--"Yes"
 --
-                            --else
-                                --"No"
-                        --]
-                    --]
-                --, tr []
-                    --[ td [ class "stat" ] [ text "Spells/Cast" ]
-                    --, td []
-                        --[ text <| fromInt wand.stats.actionsPerRound ]
-                    --]
-                --]
-            --]
-        --, viewSpellDeck spellData (wand.deck ++ deckPadding)
-        --, div [ class "wand-detail" ] [ viewWandDetails spellData wandSprites wand ]
-        --]
+--else
+--"No"
+--]
+--]
+--, tr []
+--[ td [ class "stat" ] [ text "Spells/Cast" ]
+--, td []
+--[ text <| fromInt wand.stats.actionsPerRound ]
+--]
+--]
+--]
+--, viewSpellDeck spellData (wand.deck ++ deckPadding)
+--, div [ class "wand-detail" ] [ viewWandDetails spellData wandSprites wand ]
+--]
 
 
 viewWandSprite : WandSprites -> Wand -> Bool -> Html msg
@@ -204,7 +271,7 @@ viewWandDetails spellData wandSprites wand =
         , Css.border3 (Css.px 2) Css.solid (Css.rgb 255 255 255)
         , Css.borderRadius (Css.px 2)
         , Css.backgroundColor (Css.rgb 17 13 12)
-        , Css.position (Css.absolute)
+        , Css.position Css.absolute
         ]
         [ class "displayOnParentHover" ]
         [ styled div
@@ -421,21 +488,50 @@ viewSpellTooltip spell =
 
         labelIconMapping label =
             case label of
-                "Type" -> spellTypeIconData
-                "Mana drain" -> manaDrainIconData
-                "Cast delay" -> castDelayIconData
-                "Spread" -> spreadIconData
-                "Damage Fire" -> damageFireIconData
-                "Damage Melee" -> damageMeleeIconData
-                "Damage" -> damageProjectileIconData
-                "Damage Electric" -> damageElectricIconData
-                "Damage Explosion" -> damageExplosionIconData
-                "Explosion Radius" -> explosionRadiusIconData
-                "Speed Multiplier" -> speedMultiplierIconData
-                "Max Uses" -> maxUsesIconData
-                "Bounces" -> bouncesIconData
-                "Crit Chance" -> critChanceIconData
-                _ -> ""
+                "Type" ->
+                    spellTypeIconData
+
+                "Mana drain" ->
+                    manaDrainIconData
+
+                "Cast delay" ->
+                    castDelayIconData
+
+                "Spread" ->
+                    spreadIconData
+
+                "Damage Fire" ->
+                    damageFireIconData
+
+                "Damage Melee" ->
+                    damageMeleeIconData
+
+                "Damage" ->
+                    damageProjectileIconData
+
+                "Damage Electric" ->
+                    damageElectricIconData
+
+                "Damage Explosion" ->
+                    damageExplosionIconData
+
+                "Explosion Radius" ->
+                    explosionRadiusIconData
+
+                "Speed Multiplier" ->
+                    speedMultiplierIconData
+
+                "Max Uses" ->
+                    maxUsesIconData
+
+                "Bounces" ->
+                    bouncesIconData
+
+                "Crit Chance" ->
+                    critChanceIconData
+
+                _ ->
+                    ""
 
         trAttr label stat =
             styled tr
@@ -458,8 +554,11 @@ viewSpellTooltip spell =
 
         opt v html =
             case v of
-                Just j -> html j
-                Nothing -> text ""
+                Just j ->
+                    html j
+
+                Nothing ->
+                    text ""
 
         viewSpellAttributes =
             table
@@ -467,6 +566,7 @@ viewSpellTooltip spell =
                 [ opt (Dict.get "action_type" spell.meta) (trAttr "Type" << String.fromFloat)
                 , opt (Dict.get "action_mana_drain" spell.meta) (trAttr "Mana drain" << String.fromFloat)
                 , trSpace
+
                 --, opt spell.meta.damageProjectile <| trAttr "Damage" << fromInt
                 --, opt spell.meta.damageSlice <| trAttr "Dmg. Slice" << fromInt
                 --, opt spell.meta.damageExplosion <| trAttr "Dmg. Expl" << fromInt
@@ -478,14 +578,15 @@ viewSpellTooltip spell =
                 --, trSpace
                 , opt (Dict.get "fire_rate_wait" spell.meta) (trAttr "Cast delay" << showTimeInteger << round)
                 , opt (Dict.get "reload_time" spell.meta) (trAttr "Recharge delay" << showTimeInteger << round)
+
                 --, opt spell.meta.spread <| trAttr "Spread" << (\f -> Round.round 0 f ++ " DEG")
                 --, opt spell.meta.critChance <| trAttr "Crit. Chance" << (\i -> "+" ++ fromInt i ++ "%")
                 --, case spell.meta.speedMultiplier of
-                      --Just x ->
-                          --if x /= 1.0
-                          --then trAttr "Proj. Speed" <| "x " ++ Round.round 2 x
-                          --else text ""
-                      --Nothing -> text ""
+                --Just x ->
+                --if x /= 1.0
+                --then trAttr "Proj. Speed" <| "x " ++ Round.round 2 x
+                --else text ""
+                --Nothing -> text ""
                 ]
     in
     styled div
@@ -501,7 +602,7 @@ viewSpellTooltip spell =
         , Css.fontSize (Css.rem 0.8)
         ]
         [ class "displayOnParentHover" ]
-        [ styled span [ Css.marginBottom (Css.rem 0.5)] [] [ text spell.name ]
-        , styled span [ Css.marginBottom (Css.rem 0.3)] [] [ text spell.description ]
+        [ styled span [ Css.marginBottom (Css.rem 0.5) ] [] [ text spell.name ]
+        , styled span [ Css.marginBottom (Css.rem 0.3) ] [] [ text spell.description ]
         , viewSpellAttributes
         ]
