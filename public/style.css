@@ -3,6 +3,33 @@
     src: url(/noita2.ttf);
 }
 
+html {
+    /*background-color: black; */
+    background-color: rgba(0,0,0,0);
+    font-size: 18px;
+    /*font-family: 'noita'; */
+    font-family: 'VT323', monospace;
+    image-rendering: pixelated;
+    color: white;
+}
+
+p {
+    margin: 0px;
+}
+
+.displayOnParentHover {
+    visibility: hidden;
+}
+
+*:hover > .displayOnParentHover {
+    visibility: visible;
+}
+
+/* @font-face {
+    font-family: noita;
+    src: url(/noita2.ttf);
+}
+
 p {
     margin: 0px;
 }
@@ -70,7 +97,7 @@ div.wand-brief:hover div.wand-detail {
     background-color: rgba(11, 8, 8, 0.75);
     color: white;
     font-size: 18px;
-    font-family: 'noita';
+    /* font-family: 'noita'; * /
     font-family: 'VT323', monospace;
 }
 
@@ -98,7 +125,7 @@ div.wand-brief:hover div.wand-detail {
     background-color: rgba(11, 8, 8, 0.95);
     color: white;
     font-size: 18px;
-    font-family: 'noita';
+    /* font-family: 'noita'; * /
     font-family: 'VT323', monospace;
 }
 
@@ -237,3 +264,4 @@ td.spread::before {
     width: 14px;
     background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAcAAAAHCAIAAABLMMCEAAAABnRSTlMAAAAAAABupgeRAAAAH0lEQVR4nGNkQAX///9H56MIofOxaMGnFqscI1Y3AAD/ySDi7uHLHwAAAABJRU5ErkJggg==');
 }
+*/
