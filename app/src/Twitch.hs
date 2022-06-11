@@ -10,7 +10,7 @@ import Twitch.Api
   ( ChannelInformation (broadcaster_name),
     StreamInformation (game_id),
     TwitchResponse (TwitchResponse, _data),
-    getActiveStreamByName,
+    getActiveStreamById,
     getChannelInformation,
     sendPubSubMessage,
   )
@@ -33,8 +33,8 @@ instance Exception TwitchException
 noitaGameId = "505705"
 
 isStreamingNoita :: String -> IO Bool
-isStreamingNoita streamerName = do
-  streamInfoRes <- getActiveStreamByName streamerName
+isStreamingNoita channelId = do
+  streamInfoRes <- getActiveStreamById channelId
   case streamInfoRes of
     Right TwitchResponse {_data = [info]} ->
       return $ game_id info == noitaGameId

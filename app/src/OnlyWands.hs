@@ -9,7 +9,7 @@ import qualified Channel
 import Control.Concurrent (forkIO)
 import Control.Concurrent.STM (atomically, newTVarIO, readTVarIO, writeTChan, writeTVar)
 import Control.Monad (mzero, void)
-import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), Value (Object), decode, object, (.:), (.=))
+import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), Value (Object), decode, object, (.:), (.=), eitherDecode)
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 import Data.ByteString.Search (breakAfter, breakOn)
@@ -33,6 +33,7 @@ import qualified Twitch
 import Types (Inventory, StreamerInformation (..), Wand)
 import qualified Util
 import Wuss (runSecureClient)
+import Data.ByteString.Lazy.Char8 (unpack)
 
 data SocketData = SocketData
   { messageType :: String,
@@ -99,8 +100,9 @@ startWandStreamingForStreamer onlineCheck streamerId chan t = do
   -- the other handles watching the stream to check the streamer is
   --   still playing Noita
   let urlLoc = "/client=" ++ streamerName
-  let fetchOnlyWandsStream =
+  let fetchOnlyWandsStream = do
         runSecureClient "onlywands.com" 443 urlLoc $ \conn -> do
+          putStrLn $ "Starting OnlyWands stream for " ++ urlLoc
           Channel.broadcastToChannel chan initialWands
 
           let fetchLoop = do
@@ -110,16 +112,21 @@ startWandStreamingForStreamer onlineCheck streamerId chan t = do
                     putStrLn "Closing socket"
                     WS.sendClose conn ("Closing" :: S.ByteString)
                   else do
-                    msg <- fmap (>>= decode) $ timeout 1_000_000 $ WS.receiveData conn
-                    case msg of
-                      Nothing -> return () -- Ignore messages we can't decode or get timed out
-                      Just
-                        SocketData
-                          { wands = wands,
-                            inventory = inventory
-                          } -> do
-                          putStrLn $ "Received wand update for " ++ streamerName
-                          Channel.broadcastToChannel chan (wands, inventory)
+                    msgOrTimeout <- timeout 10_000_000 $ WS.receiveData conn
+                    case msgOrTimeout of
+                      Nothing -> pure ()
+                      Just "sup nerd" -> pure ()
+                      Just rawMsg ->
+                        case eitherDecode rawMsg of
+                          Left error -> do
+                            putStrLn $ "Error decoding wands for " ++ streamerName ++ ": " ++ error
+                            putStrLn $ "Raw data: " ++ show rawMsg
+                          Right SocketData
+                            { wands = wands,
+                              inventory = inventory
+                            } -> do
+                            putStrLn $ "Received wand update for " ++ streamerName
+                            Channel.broadcastToChannel chan (wands, inventory)
                     fetchLoop
           fetchLoop
 
@@ -133,7 +140,7 @@ startWandStreamingForStreamer onlineCheck streamerId chan t = do
 
   let checkStreamerOnline = do
         Util.sleepSeconds 30
-        online <- onlineCheck streamerName
+        online <- onlineCheck streamerId
         if not online
           then signalStop
           else checkStreamerOnline

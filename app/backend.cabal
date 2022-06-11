@@ -30,6 +30,7 @@ executable backend-app
       , OverloadedStrings
       , NumericUnderscores
       , DuplicateRecordFields
+      , QuasiQuotes
     other-modules:
         App
       , Channel
@@ -64,6 +65,7 @@ executable backend-app
       , lens
       , list-t
       , mtl
+      , raw-strings-qq
       , req
       , servant
       , servant-server
