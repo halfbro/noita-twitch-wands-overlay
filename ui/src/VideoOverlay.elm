@@ -256,11 +256,11 @@ viewWandDetails spellData wandSprites wand =
         , Css.margin (Css.px 5)
         , Css.border3 (Css.px 2) Css.solid (Css.rgb 255 255 255)
         , Css.borderRadius (Css.px 2)
-        , Css.backgroundColor (Css.rgb 17 13 12)
+        , Css.backgroundColor (Css.rgba 17 13 12 0.7)
         , Css.position Css.absolute
         , Css.top (Css.pct 120)
         ]
-        [ class "displayOnParentHover" ]
+        [ class "easeInOnParentHover" ]
         [ styled div
             [ Css.displayFlex
             , Css.minWidth Css.maxContent
@@ -428,6 +428,9 @@ viewSpellTooltip spell =
         castDelayIconData =
             "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAcAAAAHCAYAAADEUlfTAAAAFElEQVQImWNgoB34////f2w0jQAAvkUL9V/xo/8AAAAASUVORK5CYII="
 
+        rechargeTimeIconData =
+            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAcAAAAHCAIAAABLMMCEAAAABnRSTlMAAAAAAABupgeRAAAAL0lEQVR4nG2KsQ0AMAzC7P7/Mx0ipVUUJmMQAJIUqAz1+Fc9HLac8VpKkmK7qz1f19Yg7L/pwAsAAAAASUVORK5CYII="
+
         spreadIconData =
             "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAcAAAAHCAIAAABLMMCEAAAABnRSTlMAAAAAAABupgeRAAAAH0lEQVR4nGNkQAX///9H56MIofOxaMGnFqscI1Y3AAD/ySDi7uHLHwAAAABJRU5ErkJggg=="
 
@@ -483,6 +486,9 @@ viewSpellTooltip spell =
 
                 "Cast delay" ->
                     castDelayIconData
+
+                "Recharge delay" ->
+                    rechargeTimeIconData
 
                 "Spread" ->
                     spreadIconData
@@ -580,13 +586,14 @@ viewSpellTooltip spell =
         [ Css.padding (Css.px 5)
         , Css.border3 (Css.px 2) Css.solid (Css.rgb 255 255 255)
         , Css.borderRadius (Css.px 2)
-        , Css.backgroundColor (Css.rgb 17 13 12)
+        , Css.backgroundColor (Css.rgba 17 13 12 1.0)
         , Css.position Css.absolute
         , Css.width (Css.px 250)
         , Css.displayFlex
-        , Css.zIndex (Css.int 1)
+        , Css.zIndex (Css.int 10)
         , Css.flexDirection Css.column
         , Css.fontSize (Css.rem 0.8)
+        , Css.pointerEvents Css.none
         ]
         [ class "displayOnParentHover" ]
         [ styled span [ Css.marginBottom (Css.rem 0.5) ] [] [ text spell.name ]

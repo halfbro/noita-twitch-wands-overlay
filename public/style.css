@@ -22,3 +22,15 @@ p {
 *:hover > .displayOnParentHover {
     visibility: visible;
 }
+
+.easeInOnParentHover {
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.3s, visibility 0s linear 300ms;
+}
+
+*:hover > .easeInOnParentHover {
+    visibility: visible;
+    opacity: 1;
+    transition: opacity 0.3s, visibility 0s linear 0s;
+}
