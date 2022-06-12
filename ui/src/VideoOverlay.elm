@@ -1,4 +1,4 @@
-port module Main exposing (..)
+port module VideoOverlay exposing (..)
 
 import Browser
 import Css
@@ -22,7 +22,7 @@ port twitchBroadcastPort : (String -> msg) -> Sub msg
 
 
 subscriptions : Model -> Sub Msg
-subscriptions m =
+subscriptions _ =
     Sub.batch
         [ twitchBroadcastPort
             (\str ->
@@ -59,7 +59,7 @@ init flags =
         newSlider initial onChange =
             SingleSlider.init
                 { min = 0.0
-                , max = 20.0
+                , max = 100.0
                 , step = 0.1
                 , value = initial
                 , onChange = onChange
@@ -71,11 +71,9 @@ init flags =
             , streamerId = flags.channelId
             , spellData = withDefault empty <| decodeValue (dict decodeSpell) flags.spellData
             , wandSprites = withDefault empty <| decodeValue (dict string) flags.wandSprites
-            , wandsStartXSlider = newSlider 2.0 ChangeWandBoxX -- Percent value
-            , wandsStartYSlider = newSlider 4.0 ChangeWandBoxY
-            , wandsBoxWidthSlider = newSlider 13.0 ChangeWandBoxWidth
-            , wandsBoxHeightSlider = newSlider 13.0 ChangeWandBoxHeight
-            , wandsBoxGapSlider = newSlider 3.0 ChangeWandBoxGap
+            , wandsStartXSlider = newSlider 3.3 ChangeWandBoxX -- Percent value
+            , wandsStartYSlider = newSlider 6.1 ChangeWandBoxY
+            , wandsBoxWidthSlider = newSlider 11.9 ChangeWandBoxWidth
             }
     in
     ( m, Cmd.none )
@@ -87,8 +85,6 @@ type Msg
     | ChangeWandBoxX Float
     | ChangeWandBoxY Float
     | ChangeWandBoxWidth Float
-    | ChangeWandBoxHeight Float
-    | ChangeWandBoxGap Float
 
 
 type alias Model =
@@ -99,8 +95,6 @@ type alias Model =
     , wandsStartXSlider : SingleSlider.SingleSlider Msg
     , wandsStartYSlider : SingleSlider.SingleSlider Msg
     , wandsBoxWidthSlider : SingleSlider.SingleSlider Msg
-    , wandsBoxHeightSlider : SingleSlider.SingleSlider Msg
-    , wandsBoxGapSlider : SingleSlider.SingleSlider Msg
     }
 
 
@@ -126,18 +120,12 @@ update msg model =
         ChangeWandBoxWidth v ->
             ( { model | wandsBoxWidthSlider = SingleSlider.update v model.wandsBoxWidthSlider }, Cmd.none )
 
-        ChangeWandBoxHeight v ->
-            ( { model | wandsBoxHeightSlider = SingleSlider.update v model.wandsBoxHeightSlider }, Cmd.none )
-
-        ChangeWandBoxGap v ->
-            ( { model | wandsBoxGapSlider = SingleSlider.update v model.wandsBoxGapSlider }, Cmd.none )
-
 
 view : Model -> Html Msg
 view model =
     div []
         [ viewWands model
-        , viewSliders model
+        --, viewSliders model
         ]
 
 
@@ -154,8 +142,6 @@ viewSliders model =
         [ fromUnstyled <| SingleSlider.view model.wandsStartXSlider
         , fromUnstyled <| SingleSlider.view model.wandsStartYSlider
         , fromUnstyled <| SingleSlider.view model.wandsBoxWidthSlider
-        , fromUnstyled <| SingleSlider.view model.wandsBoxHeightSlider
-        , fromUnstyled <| SingleSlider.view model.wandsBoxGapSlider
         ]
 
 
@@ -165,23 +151,23 @@ viewWands model =
         viewHoverBox : Wand -> Html msg
         viewHoverBox wand =
             styled div
-                [ Css.width (Css.pct <| SingleSlider.fetchValue model.wandsBoxWidthSlider)
-                , Css.border (Css.px 3)
+                [ Css.width (Css.pct 21.25)
+                , Css.border (Css.px 1)
                 , Css.borderStyle Css.solid
-                , Css.borderColor (Css.rgba 255 255 255 0.9)
+                , Css.borderColor (Css.rgba 255 255 255 0.5)
                 ]
                 []
                 [ viewWandDetails model.spellData model.wandSprites wand
                 ]
     in
     styled div
-        [ Css.displayFlex
-        , Css.top (Css.pct <| SingleSlider.fetchValue model.wandsStartYSlider)
+        [ Css.top (Css.pct <| SingleSlider.fetchValue model.wandsStartYSlider)
         , Css.left (Css.pct <| SingleSlider.fetchValue model.wandsStartXSlider)
-        , Css.height (Css.pct <| SingleSlider.fetchValue model.wandsBoxHeightSlider)
-        , Css.width (Css.px 300) -- TODO: make percentage later
-        , Css.property "gap" <| (String.fromFloat <| SingleSlider.fetchValue model.wandsBoxGapSlider) ++ "%"
+        , Css.width (Css.pct <| SingleSlider.fetchValue model.wandsBoxWidthSlider)
         , Css.position Css.absolute
+        , Css.displayFlex
+        , Css.property "gap" "5%"
+        , Css.property "aspect-ratio" "4.5/1" -- Found by manually testing
         ]
         []
         (List.map viewHoverBox model.streamerInfo.wands)

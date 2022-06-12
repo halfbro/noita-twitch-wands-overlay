@@ -32,14 +32,13 @@ function twitchRequest(endpoint, type, body) {
 }
 
 const configureElm = (channelId) => {
-    app = Elm.Main.init({
+    app = Elm.VideoOverlay.init({
         node: document.getElementById('elm'),
         flags: {channelId: channelId, spellData: spellData, wandSprites: wandSprites}
     });
 };
 
 window.Twitch.ext.listen('broadcast', (target, contentType, message) => {
-    log(`Received broadcast: ${message}`);
     app.ports.twitchBroadcastPort.send(message);
 });
 
@@ -47,7 +46,6 @@ window.Twitch.ext.onAuthorized(newAuth => {
     auth = newAuth;
     configureElm(auth.channelId);
     getInitialWandsForChannel(auth.channelId).then(info => info.text().then(body => {
-        log('initial state', body);
         app.ports.twitchBroadcastPort.send(body);
     }));
 });

@@ -1,14 +1,14 @@
 @font-face {
-    font-family: noita;
-    src: url(/noita2.ttf);
+    font-family: Noita;
+    src: url("./NoitaPixel.ttf") format("truetype");
 }
 
 html {
     /*background-color: black; */
     background-color: rgba(0,0,0,0);
-    font-size: 18px;
-    /*font-family: 'noita'; */
-    font-family: 'VT323', monospace;
+    font-size: 1rem;
+    font-family: 'Noita';
+    /*font-family: 'VT323', monospace;*/
     image-rendering: pixelated;
     color: white;
 }

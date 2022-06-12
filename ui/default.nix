@@ -46,7 +46,7 @@ in mkDerivation {
   name = "elm-app-0.1.0";
   srcs = ./elm-srcs.nix;
   src = ./.;
-  targets = ["Main"];
+  targets = ["VideoOverlay"];
   srcdir = "./src";
   outputJavaScript = true;
 }
