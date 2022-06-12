@@ -258,6 +258,7 @@ viewWandDetails spellData wandSprites wand =
         , Css.borderRadius (Css.px 2)
         , Css.backgroundColor (Css.rgb 17 13 12)
         , Css.position Css.absolute
+        , Css.top (Css.pct 120)
         ]
         [ class "displayOnParentHover" ]
         [ styled div
