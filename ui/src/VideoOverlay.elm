@@ -165,8 +165,9 @@ viewInventory model =
         []
         [ styled div
               [ Css.backgroundColor (Css.rgb 55 39 36)
-              , Css.border3 (Css.px 1) (Css.solid) (Css.rgb 55 39 36)
-              , Css.borderRadius (Css.px 4)]
+              , Css.border3 (Css.px 5) (Css.solid) (Css.rgb 55 39 36)
+              , Css.borderRadius (Css.px 4)
+              , Css.margin (Css.px -5)]
               [ class "easeInOnParentHover" ]
               [ viewInventorySpells model.spellData (inventory ++ deckPadding) ]
         ]
