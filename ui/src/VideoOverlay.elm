@@ -3,6 +3,7 @@ port module VideoOverlay exposing (..)
 import Browser
 import Css
 import Css.Transitions
+import Delay
 import Dict exposing (empty)
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (class, src)
@@ -13,7 +14,6 @@ import Round as Round
 import String exposing (fromInt)
 import Task
 import Types exposing (..)
-import Delay
 
 
 port twitchBroadcastPort : (String -> msg) -> Sub msg
@@ -71,7 +71,7 @@ init flags =
             , streamerId = flags.channelId
             , spellData = withDefault empty <| decodeValue (dict decodeSpell) flags.spellData
             , wandSprites = withDefault empty <| decodeValue (dict string) flags.wandSprites
-            , isShowingHoverBox = True
+            , isShowingHoverBoxes = False
             }
     in
     ( m, flashHoverBoxes )
@@ -80,14 +80,14 @@ init flags =
 flashHoverBoxes : Cmd Msg
 flashHoverBoxes =
     Delay.sequence
-        [ (0, ShowHoverBoxes)
-        , (500, HideHoverBoxes)
-        , (500, ShowHoverBoxes)
-        , (500, HideHoverBoxes)
-        , (500, ShowHoverBoxes)
-        , (500, HideHoverBoxes)
-        , (500, ShowHoverBoxes)
-        , (500, HideHoverBoxes)
+        [ ( 0, ShowHoverBoxes )
+        , ( 500, HideHoverBoxes )
+        , ( 500, ShowHoverBoxes )
+        , ( 500, HideHoverBoxes )
+        , ( 500, ShowHoverBoxes )
+        , ( 500, HideHoverBoxes )
+        , ( 500, ShowHoverBoxes )
+        , ( 500, HideHoverBoxes )
         ]
 
 
@@ -136,7 +136,55 @@ view : Model -> Html Msg
 view model =
     div []
         [ viewWands model
+        , viewInventory model
         ]
+
+
+viewInventory : Model -> Html msg
+viewInventory model =
+    let
+        inventory =
+            model.streamerInfo.inventory
+
+        deckPadding =
+            List.repeat (16 - length inventory) "0"
+    in
+    styled div
+        [ Css.top (Css.pct <| model.streamerSettings.wandBoxTop * 0.95)
+        , Css.left (Css.pct <| model.streamerSettings.wandBoxLeft * 9.3)
+        , Css.width (Css.pct <| model.streamerSettings.wandBoxWidth * 4.15)
+        , Css.backgroundColor (Css.rgb 255 255 255)
+        , if model.isShowingHoverBoxes then
+            Css.backgroundColor (Css.rgba 255 255 255 0.4)
+
+          else
+            Css.backgroundColor (Css.rgba 255 255 255 0)
+        , Css.Transitions.transition [ Css.Transitions.backgroundColor 400 ]
+        , Css.position Css.absolute
+        ]
+        []
+        [ styled div
+              [ Css.backgroundColor (Css.rgb 55 39 36)
+              , Css.border3 (Css.px 1) (Css.solid) (Css.rgb 55 39 36)
+              , Css.borderRadius (Css.px 4)]
+              [ class "easeInOnParentHover" ]
+              [ viewInventorySpells model.spellData (inventory ++ deckPadding) ]
+        ]
+
+viewInventorySpells : SpellData -> List SpellName -> Html msg
+viewInventorySpells spellData spellNames =
+    let
+        spells =
+            spellNames
+                |> List.map (\name -> Dict.get name spellData)
+                |> List.map viewSpellSlot
+    in
+    styled div
+        [ Css.displayFlex
+        , Css.property "gap" "0.9%"
+        ]
+        []
+        spells
 
 
 viewWands : Model -> Html msg
@@ -150,9 +198,8 @@ viewWands model =
                     Css.backgroundColor (Css.rgba 255 255 255 0.4)
 
                   else
-                    Css.backgroundColor (Css.rgba 255 255 255 0.0)
-                , Css.Transitions.transition
-                    [ Css.Transitions.backgroundColor 400 ]
+                    Css.backgroundColor (Css.rgba 255 255 255 0)
+                , Css.Transitions.transition [ Css.Transitions.backgroundColor 400 ]
                 , Css.property "aspect-ratio" "1/1"
                 ]
                 []
