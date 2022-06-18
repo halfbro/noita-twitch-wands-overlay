@@ -2,6 +2,7 @@ port module VideoOverlay exposing (..)
 
 import Browser
 import Css
+import Css.Transitions
 import Dict exposing (empty)
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (class, src)
@@ -10,7 +11,9 @@ import List exposing (length)
 import Result exposing (withDefault)
 import Round as Round
 import String exposing (fromInt)
+import Task
 import Types exposing (..)
+import Delay
 
 
 port twitchBroadcastPort : (String -> msg) -> Sub msg
@@ -56,7 +59,7 @@ type alias Flags =
     }
 
 
-init : Flags -> ( Model, Cmd msg )
+init : Flags -> ( Model, Cmd Msg )
 init flags =
     let
         m : Model
@@ -68,14 +71,31 @@ init flags =
             , streamerId = flags.channelId
             , spellData = withDefault empty <| decodeValue (dict decodeSpell) flags.spellData
             , wandSprites = withDefault empty <| decodeValue (dict string) flags.wandSprites
+            , isShowingHoverBox = True
             }
     in
-    ( m, Cmd.none )
+    ( m, flashHoverBoxes )
+
+
+flashHoverBoxes : Cmd Msg
+flashHoverBoxes =
+    Delay.sequence
+        [ (0, ShowHoverBoxes)
+        , (500, HideHoverBoxes)
+        , (500, ShowHoverBoxes)
+        , (500, HideHoverBoxes)
+        , (500, ShowHoverBoxes)
+        , (500, HideHoverBoxes)
+        , (500, ShowHoverBoxes)
+        , (500, HideHoverBoxes)
+        ]
 
 
 type Msg
     = ReceivedWandUpdate StreamerInformation
     | ReceivedSettingsUpdate StreamerSettings
+    | ShowHoverBoxes
+    | HideHoverBoxes
     | BadWandUpdate Error
 
 
@@ -85,17 +105,24 @@ type alias Model =
     , streamerId : String
     , spellData : SpellData
     , wandSprites : WandSprites
+    , isShowingHoverBoxes : Bool
     }
 
 
-update : Msg -> Model -> ( Model, Cmd msg )
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ReceivedWandUpdate info ->
             ( { model | streamerInfo = info }, Cmd.none )
 
         ReceivedSettingsUpdate settings ->
-            ( { model | streamerSettings = settings }, Cmd.none )
+            ( { model | streamerSettings = settings }, flashHoverBoxes )
+
+        ShowHoverBoxes ->
+            ( { model | isShowingHoverBoxes = True }, Cmd.none )
+
+        HideHoverBoxes ->
+            ( { model | isShowingHoverBoxes = False }, Cmd.none )
 
         BadWandUpdate e ->
             let
@@ -119,9 +146,14 @@ viewWands model =
         viewHoverBox wand =
             styled div
                 [ Css.width (Css.pct 21.25)
-                , Css.border (Css.px 1)
-                , Css.borderStyle Css.solid
-                , Css.borderColor (Css.rgba 255 255 255 0.5)
+                , if model.isShowingHoverBoxes then
+                    Css.backgroundColor (Css.rgba 255 255 255 0.4)
+
+                  else
+                    Css.backgroundColor (Css.rgba 255 255 255 0.0)
+                , Css.Transitions.transition
+                    [ Css.Transitions.backgroundColor 400 ]
+                , Css.property "aspect-ratio" "1/1"
                 ]
                 []
                 [ viewWandDetails model.spellData model.wandSprites wand
@@ -134,7 +166,6 @@ viewWands model =
         , Css.position Css.absolute
         , Css.displayFlex
         , Css.property "gap" "5%"
-        , Css.property "aspect-ratio" "4.5/1" -- Found by manually testing
         ]
         []
         (List.map viewHoverBox model.streamerInfo.wands)
@@ -560,6 +591,7 @@ viewSpellTooltip spell =
         fromIntWithSign i =
             if i > 0 then
                 "+" ++ String.fromInt i
+
             else
                 String.fromInt i
 
@@ -578,10 +610,9 @@ viewSpellTooltip spell =
                 --, opt spell.meta.damageDrill <| trAttr "Dmg. Drill" << fromInt
                 --, opt spell.meta.damageElectric <| trAttr "Dmg. Electric" << fromInt
                 , opt (Dict.get "bounces" spell.meta) (trAttr "Bounces" << fromIntWithSign << round)
-
                 , opt (Dict.get "fire_rate_wait" spell.meta) (trAttr "Cast delay" << showTimeInteger << round)
                 , opt (Dict.get "reload_time" spell.meta) (trAttr "Recharge delay" << showTimeInteger << round)
-                , opt (Dict.get "damage_projectile_add" spell.meta) (trAttr "Damage" << fromIntWithSign << (\f -> round <| f * 25) )
+                , opt (Dict.get "damage_projectile_add" spell.meta) (trAttr "Damage" << fromIntWithSign << (\f -> round <| f * 25))
                 , opt (Dict.get "spread_degrees" spell.meta) (trAttr "Spread" << (\f -> Round.round 1 f ++ " DEG"))
                 , opt (Dict.get "damage_critical_chance" spell.meta) (trAttr "Crit. Chance" << (\i -> fromIntWithSign i ++ "%") << round)
                 , case Dict.get "speed_multiplier" spell.meta of
