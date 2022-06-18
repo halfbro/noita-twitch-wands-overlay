@@ -485,6 +485,9 @@ viewSpellTooltip spell =
                 "Speed Multiplier" ->
                     speedMultiplierIconData
 
+                "Proj. Speed" ->
+                    speedMultiplierIconData
+
                 "Max Uses" ->
                     maxUsesIconData
 
@@ -496,6 +499,36 @@ viewSpellTooltip spell =
 
                 _ ->
                     ""
+
+        spellTypeFromEnum : Int -> String
+        spellTypeFromEnum i =
+            case i of
+                0 ->
+                    "Projectile"
+
+                1 ->
+                    "Static proj."
+
+                2 ->
+                    "Proj. modifier"
+
+                3 ->
+                    "Multicast"
+
+                4 ->
+                    "Material"
+
+                5 ->
+                    "Other"
+
+                6 ->
+                    "Utility"
+
+                7 ->
+                    "Passive"
+
+                x ->
+                    String.fromInt x
 
         trAttr label stat =
             styled tr
@@ -524,10 +557,16 @@ viewSpellTooltip spell =
                 Nothing ->
                     text ""
 
+        fromIntWithSign i =
+            if i > 0 then
+                "+" ++ String.fromInt i
+            else
+                String.fromInt i
+
         viewSpellAttributes =
             table
                 []
-                [ opt (Dict.get "action_type" spell.meta) (trAttr "Type" << String.fromFloat)
+                [ opt (Dict.get "action_type" spell.meta) (trAttr "Type" << spellTypeFromEnum << round)
                 , opt (Dict.get "action_mana_drain" spell.meta) (trAttr "Mana drain" << String.fromFloat)
                 , trSpace
 
@@ -538,19 +577,23 @@ viewSpellTooltip spell =
                 --, opt spell.meta.damageFire <| trAttr "Dmg. Fire" << fromInt
                 --, opt spell.meta.damageDrill <| trAttr "Dmg. Drill" << fromInt
                 --, opt spell.meta.damageElectric <| trAttr "Dmg. Electric" << fromInt
-                --, opt spell.meta.bounces <| trAttr "Bounces" << fromInt
-                --, trSpace
+                , opt (Dict.get "bounces" spell.meta) (trAttr "Bounces" << fromIntWithSign << round)
+
                 , opt (Dict.get "fire_rate_wait" spell.meta) (trAttr "Cast delay" << showTimeInteger << round)
                 , opt (Dict.get "reload_time" spell.meta) (trAttr "Recharge delay" << showTimeInteger << round)
+                , opt (Dict.get "damage_projectile_add" spell.meta) (trAttr "Damage" << fromIntWithSign << (\f -> round <| f * 25) )
+                , opt (Dict.get "spread_degrees" spell.meta) (trAttr "Spread" << (\f -> Round.round 1 f ++ " DEG"))
+                , opt (Dict.get "damage_critical_chance" spell.meta) (trAttr "Crit. Chance" << (\i -> fromIntWithSign i ++ "%") << round)
+                , case Dict.get "speed_multiplier" spell.meta of
+                    Just x ->
+                        if x /= 1.0 then
+                            trAttr "Proj. Speed" <| "x " ++ Round.round 2 x
 
-                --, opt spell.meta.spread <| trAttr "Spread" << (\f -> Round.round 0 f ++ " DEG")
-                --, opt spell.meta.critChance <| trAttr "Crit. Chance" << (\i -> "+" ++ fromInt i ++ "%")
-                --, case spell.meta.speedMultiplier of
-                --Just x ->
-                --if x /= 1.0
-                --then trAttr "Proj. Speed" <| "x " ++ Round.round 2 x
-                --else text ""
-                --Nothing -> text ""
+                        else
+                            text ""
+
+                    Nothing ->
+                        text ""
                 ]
     in
     styled div
