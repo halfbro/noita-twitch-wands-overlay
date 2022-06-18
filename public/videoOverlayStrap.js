@@ -32,9 +32,10 @@ function twitchRequest(endpoint, type, body) {
 }
 
 const configureElm = (channelId) => {
+    streamerSettings = JSON.parse(window.Twitch.ext.configuration.broadcaster.content);
     app = Elm.VideoOverlay.init({
         node: document.getElementById('elm'),
-        flags: {channelId: channelId, spellData: spellData, wandSprites: wandSprites}
+        flags: {channelId: channelId, settings: streamerSettings, spellData: spellData, wandSprites: wandSprites}
     });
 };
 

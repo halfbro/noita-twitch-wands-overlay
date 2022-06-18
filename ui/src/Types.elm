@@ -5,9 +5,24 @@ import Json.Decode as JD exposing (Decoder, bool, dict, float, index, int, list,
 import Json.Decode.Pipeline exposing (optional, required)
 
 
-type alias WandInformation =
-    { wands : List String
-    , inventory : List String
+type alias StreamerSettings =
+    { wandBoxLeft : Float
+    , wandBoxTop : Float
+    , wandBoxWidth: Float
+    }
+
+decodeStreamerSettings : Decoder StreamerSettings
+decodeStreamerSettings =
+    JD.succeed StreamerSettings
+        |> required "wandBoxLeft" float
+        |> required "wandBoxTop" float
+        |> required "wandBoxWidth" float
+
+newStreamerSettings : StreamerSettings
+newStreamerSettings =
+    { wandBoxLeft = 3.3
+    , wandBoxTop = 6.1
+    , wandBoxWidth = 11.9
     }
 
 
@@ -74,8 +89,8 @@ blankInfo =
     { wands = [], inventory = [] }
 
 
-decodeUpdate : Decoder StreamerInformation
-decodeUpdate =
+decodeStreamerInformation : Decoder StreamerInformation
+decodeStreamerInformation =
     map2 StreamerInformation (index 0 (list decodeWand)) (index 1 (list string))
 
 
@@ -86,6 +101,18 @@ type alias Spell =
     , sprite : String
     }
 
+
+type BroadcastUpdate
+    = WandUpdate StreamerInformation
+    | SettingsUpdate StreamerSettings
+
+
+decodeBroadcastUpdate : Decoder BroadcastUpdate
+decodeBroadcastUpdate =
+    JD.oneOf
+        [ JD.map WandUpdate decodeStreamerInformation
+        , JD.map SettingsUpdate decodeStreamerSettings
+        ]
 
 type alias SpellData =
     Dict SpellName Spell

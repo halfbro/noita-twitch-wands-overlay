@@ -9,7 +9,6 @@ import Json.Decode exposing (Error, Value, decodeString, decodeValue, dict, stri
 import List exposing (length)
 import Result exposing (withDefault)
 import Round as Round
-import SingleSlider
 import String exposing (fromInt)
 import Types exposing (..)
 
@@ -26,9 +25,12 @@ subscriptions _ =
     Sub.batch
         [ twitchBroadcastPort
             (\str ->
-                case decodeString decodeUpdate str of
-                    Ok i ->
-                        ReceivedWandUpdate i
+                case decodeString decodeBroadcastUpdate str of
+                    Ok (WandUpdate wands) ->
+                        ReceivedWandUpdate wands
+
+                    Ok (SettingsUpdate settings) ->
+                        ReceivedSettingsUpdate settings
 
                     Err e ->
                         BadWandUpdate e
@@ -48,6 +50,7 @@ main =
 
 type alias Flags =
     { channelId : String
+    , settings : Value
     , spellData : Value
     , wandSprites : Value
     }
@@ -56,24 +59,15 @@ type alias Flags =
 init : Flags -> ( Model, Cmd msg )
 init flags =
     let
-        newSlider initial onChange =
-            SingleSlider.init
-                { min = 0.0
-                , max = 100.0
-                , step = 0.1
-                , value = initial
-                , onChange = onChange
-                }
-
         m : Model
         m =
             { streamerInfo = blankInfo
+            , streamerSettings =
+                withDefault newStreamerSettings <|
+                    decodeValue decodeStreamerSettings flags.settings
             , streamerId = flags.channelId
             , spellData = withDefault empty <| decodeValue (dict decodeSpell) flags.spellData
             , wandSprites = withDefault empty <| decodeValue (dict string) flags.wandSprites
-            , wandsStartXSlider = newSlider 3.3 ChangeWandBoxX -- Percent value
-            , wandsStartYSlider = newSlider 6.1 ChangeWandBoxY
-            , wandsBoxWidthSlider = newSlider 11.9 ChangeWandBoxWidth
             }
     in
     ( m, Cmd.none )
@@ -81,20 +75,16 @@ init flags =
 
 type Msg
     = ReceivedWandUpdate StreamerInformation
+    | ReceivedSettingsUpdate StreamerSettings
     | BadWandUpdate Error
-    | ChangeWandBoxX Float
-    | ChangeWandBoxY Float
-    | ChangeWandBoxWidth Float
 
 
 type alias Model =
     { streamerInfo : StreamerInformation
+    , streamerSettings : StreamerSettings
     , streamerId : String
     , spellData : SpellData
     , wandSprites : WandSprites
-    , wandsStartXSlider : SingleSlider.SingleSlider Msg
-    , wandsStartYSlider : SingleSlider.SingleSlider Msg
-    , wandsBoxWidthSlider : SingleSlider.SingleSlider Msg
     }
 
 
@@ -104,6 +94,9 @@ update msg model =
         ReceivedWandUpdate info ->
             ( { model | streamerInfo = info }, Cmd.none )
 
+        ReceivedSettingsUpdate settings ->
+            ( { model | streamerSettings = settings }, Cmd.none )
+
         BadWandUpdate e ->
             let
                 _ =
@@ -111,37 +104,11 @@ update msg model =
             in
             ( model, Cmd.none )
 
-        ChangeWandBoxX v ->
-            ( { model | wandsStartXSlider = SingleSlider.update v model.wandsStartXSlider }, Cmd.none )
-
-        ChangeWandBoxY v ->
-            ( { model | wandsStartYSlider = SingleSlider.update v model.wandsStartYSlider }, Cmd.none )
-
-        ChangeWandBoxWidth v ->
-            ( { model | wandsBoxWidthSlider = SingleSlider.update v model.wandsBoxWidthSlider }, Cmd.none )
-
 
 view : Model -> Html Msg
 view model =
     div []
         [ viewWands model
-        --, viewSliders model
-        ]
-
-
-viewSliders : Model -> Html Msg
-viewSliders model =
-    styled div
-        [ Css.displayFlex
-        , Css.flexDirection Css.column
-        , Css.left (Css.pct 2)
-        , Css.top (Css.pct 30)
-        , Css.position Css.absolute
-        ]
-        []
-        [ fromUnstyled <| SingleSlider.view model.wandsStartXSlider
-        , fromUnstyled <| SingleSlider.view model.wandsStartYSlider
-        , fromUnstyled <| SingleSlider.view model.wandsBoxWidthSlider
         ]
 
 
@@ -161,9 +128,9 @@ viewWands model =
                 ]
     in
     styled div
-        [ Css.top (Css.pct <| SingleSlider.fetchValue model.wandsStartYSlider)
-        , Css.left (Css.pct <| SingleSlider.fetchValue model.wandsStartXSlider)
-        , Css.width (Css.pct <| SingleSlider.fetchValue model.wandsBoxWidthSlider)
+        [ Css.top (Css.pct model.streamerSettings.wandBoxTop)
+        , Css.left (Css.pct model.streamerSettings.wandBoxLeft)
+        , Css.width (Css.pct model.streamerSettings.wandBoxWidth)
         , Css.position Css.absolute
         , Css.displayFlex
         , Css.property "gap" "5%"
@@ -234,42 +201,46 @@ viewWandSprite wandSprites wand isRotated =
 viewWandDetails : SpellData -> WandSprites -> Wand -> Html msg
 viewWandDetails spellData wandSprites wand =
     let
+        wandName =
+            styled div
+                [ Css.fontSize (Css.em 1.1)
+                , Css.paddingBottom (Css.px 10)
+                ]
+                []
+                [ text "WAND" -- Maybe this will be populated at some point?
+                ]
+
         statsSection =
-            viewWandStats wand
+            styled div
+                [ Css.displayFlex
+                , Css.minWidth Css.maxContent
+                , Css.paddingBottom (Css.px 20)
+                ]
+                []
+                [ viewWandStats wand, viewWandSprite wandSprites wand True ]
 
         alwaysCastSection =
             viewWandAlwaysCast spellData wand
 
         deckPadding =
             List.repeat (wand.stats.deckCapacity - length wand.alwaysCast - length wand.deck) "0"
-
-        deckSection =
-            div []
-                [ p [] [ text "Spells:" ]
-                , viewSpellDeck spellData (wand.deck ++ deckPadding)
-                ]
     in
     styled div
         [ Css.maxWidth Css.minContent
         , Css.minHeight Css.fitContent
-        , Css.padding (Css.px 5)
+        , Css.padding (Css.px 12)
         , Css.margin (Css.px 5)
         , Css.border3 (Css.px 2) Css.solid (Css.rgb 255 255 255)
-        , Css.borderRadius (Css.px 2)
-        , Css.backgroundColor (Css.rgba 17 13 12 0.7)
+        , Css.borderRadius (Css.px 4)
+        , Css.backgroundColor (Css.rgba 17 13 12 0.8)
         , Css.position Css.absolute
         , Css.top (Css.pct 120)
         ]
         [ class "easeInOnParentHover" ]
-        [ styled div
-            [ Css.displayFlex
-            , Css.minWidth Css.maxContent
-            , Css.paddingBottom (Css.px 20)
-            ]
-            []
-            [ statsSection, viewWandSprite wandSprites wand True ]
+        [ wandName
+        , statsSection
         , alwaysCastSection
-        , deckSection
+        , viewSpellDeck spellData (wand.deck ++ deckPadding)
         ]
 
 
