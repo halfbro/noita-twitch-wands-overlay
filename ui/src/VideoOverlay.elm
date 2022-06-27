@@ -12,7 +12,6 @@ import List exposing (length)
 import Result exposing (withDefault)
 import Round as Round
 import String exposing (fromInt)
-import Task
 import Types exposing (..)
 
 
@@ -135,8 +134,51 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div []
-        [ viewWands model
-        , viewInventory model
+        [ viewTopSection model
+        ]
+
+
+viewTopSection : Model -> Html msg
+viewTopSection model =
+    let
+        wandsSection =
+            styled div
+                [ Css.width (Css.pct 15.5)
+                , Css.margin (Css.pct 0.9)
+                , Css.marginRight (Css.pct 0.45)
+                ]
+                []
+        -- unused for now, but has width
+        itemsSection =
+            styled div
+                [ Css.width (Css.pct 15.5)
+                , Css.margin4 (Css.pct 0.9) (Css.pct 1.7) (Css.pct 0.9) (Css.pct 0.45)
+                ]
+                []
+        inventorySection =
+            styled div
+                [ Css.flex (Css.num 1)
+                ]
+                []
+    in
+    styled div
+        [ Css.position Css.absolute
+        , Css.left (Css.pct model.streamerSettings.wandBoxLeft)
+        , Css.right (Css.pct <| 100 - model.streamerSettings.wandBoxRight)
+        , Css.top (Css.pct model.streamerSettings.wandBoxTop)
+        , Css.property "aspect-ratio" "19/1"
+        , if model.isShowingHoverBoxes then
+            Css.backgroundColor (Css.rgba 255 255 255 0.4)
+
+          else
+            Css.backgroundColor (Css.rgba 255 255 255 0)
+        , Css.Transitions.transition [ Css.Transitions.backgroundColor 400 ]
+        , Css.displayFlex
+        ]
+        []
+        [ wandsSection <| [viewWands model]
+        , itemsSection <| []
+        , inventorySection <| [viewInventory model]
         ]
 
 
@@ -148,43 +190,20 @@ viewInventory model =
 
         deckPadding =
             List.repeat (16 - length inventory) "0"
-    in
-    styled div
-        [ Css.top (Css.pct <| model.streamerSettings.wandBoxTop * 0.95)
-        , Css.left (Css.pct <| model.streamerSettings.wandBoxLeft * 9.3)
-        , Css.width (Css.pct <| model.streamerSettings.wandBoxWidth * 4.15)
-        , Css.backgroundColor (Css.rgb 255 255 255)
-        , if model.isShowingHoverBoxes then
-            Css.backgroundColor (Css.rgba 255 255 255 0.4)
 
-          else
-            Css.backgroundColor (Css.rgba 255 255 255 0)
-        , Css.Transitions.transition [ Css.Transitions.backgroundColor 400 ]
-        , Css.position Css.absolute
-        ]
-        []
-        [ styled div
-              [ Css.backgroundColor (Css.rgb 55 39 36)
-              , Css.border3 (Css.px 5) (Css.solid) (Css.rgb 55 39 36)
-              , Css.borderRadius (Css.px 4)
-              , Css.margin (Css.px -5)]
-              [ class "easeInOnParentHover" ]
-              [ viewInventorySpells model.spellData (inventory ++ deckPadding) ]
-        ]
-
-viewInventorySpells : SpellData -> List SpellName -> Html msg
-viewInventorySpells spellData spellNames =
-    let
         spells =
-            spellNames
-                |> List.map (\name -> Dict.get name spellData)
+            (inventory ++ deckPadding)
+                |> List.map (\name -> Dict.get name model.spellData)
                 |> List.map viewSpellSlot
     in
     styled div
         [ Css.displayFlex
         , Css.property "gap" "0.9%"
+        , Css.backgroundColor (Css.rgb 55 39 36)
+        , Css.border3 (Css.px 9) Css.solid (Css.rgb 81 57 48)
+        , Css.borderRadius (Css.px 6)
         ]
-        []
+        [ class "easeInOnParentHover" ]
         spells
 
 
@@ -194,13 +213,7 @@ viewWands model =
         viewHoverBox : Wand -> Html msg
         viewHoverBox wand =
             styled div
-                [ Css.width (Css.pct 21.25)
-                , if model.isShowingHoverBoxes then
-                    Css.backgroundColor (Css.rgba 255 255 255 0.4)
-
-                  else
-                    Css.backgroundColor (Css.rgba 255 255 255 0)
-                , Css.Transitions.transition [ Css.Transitions.backgroundColor 400 ]
+                [ Css.width (Css.pct 22)
                 , Css.property "aspect-ratio" "1/1"
                 ]
                 []
@@ -208,12 +221,8 @@ viewWands model =
                 ]
     in
     styled div
-        [ Css.top (Css.pct model.streamerSettings.wandBoxTop)
-        , Css.left (Css.pct model.streamerSettings.wandBoxLeft)
-        , Css.width (Css.pct model.streamerSettings.wandBoxWidth)
-        , Css.position Css.absolute
-        , Css.displayFlex
-        , Css.property "gap" "5%"
+        [ Css.displayFlex
+        , Css.property "gap" "4%"
         ]
         []
         (List.map viewHoverBox model.streamerInfo.wands)
@@ -692,4 +701,5 @@ viewSpellTooltip spell =
         [ styled span [ Css.marginBottom (Css.rem 0.5) ] [] [ text spell.name ]
         , styled span [ Css.marginBottom (Css.rem 0.3) ] [] [ text spell.description ]
         , viewSpellAttributes
+        , styled span [ Css.marginTop (Css.rem 0.5), Css.fontSize (Css.rem 0.6) ] [] [ text "*Spell tooltips may be inaccurate!" ]
         ]

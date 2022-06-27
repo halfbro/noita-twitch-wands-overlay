@@ -8,7 +8,7 @@ import Json.Decode.Pipeline exposing (optional, required)
 type alias StreamerSettings =
     { wandBoxLeft : Float
     , wandBoxTop : Float
-    , wandBoxWidth: Float
+    , wandBoxRight: Float
     }
 
 decodeStreamerSettings : Decoder StreamerSettings
@@ -16,13 +16,13 @@ decodeStreamerSettings =
     JD.succeed StreamerSettings
         |> required "wandBoxLeft" float
         |> required "wandBoxTop" float
-        |> required "wandBoxWidth" float
+        |> required "wandBoxRight" float
 
 newStreamerSettings : StreamerSettings
 newStreamerSettings =
-    { wandBoxLeft = 3.3
-    , wandBoxTop = 6.1
-    , wandBoxWidth = 11.9
+    { wandBoxLeft = 2.45
+    , wandBoxTop = 4.7
+    , wandBoxRight = 80.15
     }
 
 
