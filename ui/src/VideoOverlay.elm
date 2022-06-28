@@ -18,6 +18,9 @@ import Types exposing (..)
 port twitchBroadcastPort : (String -> msg) -> Sub msg
 
 
+port gameChangedPort : (String -> msg) -> Sub msg
+
+
 
 ---------------------
 
@@ -37,6 +40,7 @@ subscriptions _ =
                     Err e ->
                         BadWandUpdate e
             )
+        , gameChangedPort GameChanged
         ]
 
 
@@ -55,6 +59,7 @@ type alias Flags =
     , settings : Value
     , spellData : Value
     , wandSprites : Value
+    , initialGameName : String
     }
 
 
@@ -71,6 +76,7 @@ init flags =
             , spellData = withDefault empty <| decodeValue (dict decodeSpell) flags.spellData
             , wandSprites = withDefault empty <| decodeValue (dict string) flags.wandSprites
             , isShowingHoverBoxes = False
+            , isPlayingNoita = flags.initialGameName == "Noita"
             }
     in
     ( m, flashHoverBoxes )
@@ -96,6 +102,7 @@ type Msg
     | ShowHoverBoxes
     | HideHoverBoxes
     | BadWandUpdate Error
+    | GameChanged String
 
 
 type alias Model =
@@ -105,6 +112,7 @@ type alias Model =
     , spellData : SpellData
     , wandSprites : WandSprites
     , isShowingHoverBoxes : Bool
+    , isPlayingNoita : Bool
     }
 
 
@@ -130,11 +138,18 @@ update msg model =
             in
             ( model, Cmd.none )
 
+        GameChanged gameName ->
+            ( { model | isPlayingNoita = gameName == "Noita" }, flashHoverBoxes )
+
 
 view : Model -> Html Msg
 view model =
     div []
-        [ viewTopSection model
+        [ if model.isPlayingNoita then
+            viewTopSection model
+
+          else
+            text ""
         ]
 
 
@@ -148,6 +163,7 @@ viewTopSection model =
                 , Css.marginRight (Css.pct 0.45)
                 ]
                 []
+
         -- unused for now, but has width
         itemsSection =
             styled div
@@ -155,6 +171,7 @@ viewTopSection model =
                 , Css.margin4 (Css.pct 0.9) (Css.pct 1.7) (Css.pct 0.9) (Css.pct 0.45)
                 ]
                 []
+
         inventorySection =
             styled div
                 [ Css.flex (Css.num 1)
@@ -176,9 +193,9 @@ viewTopSection model =
         , Css.displayFlex
         ]
         []
-        [ wandsSection <| [viewWands model]
+        [ wandsSection <| [ viewWands model ]
         , itemsSection <| []
-        , inventorySection <| [viewInventory model]
+        , inventorySection <| [ viewInventory model ]
         ]
 
 

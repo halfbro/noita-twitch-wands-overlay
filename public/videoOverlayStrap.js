@@ -1,5 +1,6 @@
-let app = {};
-let auth = {};
+var app = {};
+var auth = {};
+var gameName = "";
 
 function log(...x) {
     window.Twitch.ext.rig.log(x);
@@ -35,7 +36,13 @@ const configureElm = (channelId) => {
     streamerSettings = JSON.parse(window.Twitch.ext.configuration.broadcaster.content);
     app = Elm.VideoOverlay.init({
         node: document.getElementById('elm'),
-        flags: {channelId: channelId, settings: streamerSettings, spellData: spellData, wandSprites: wandSprites}
+        flags: {
+            channelId: channelId,
+            settings: streamerSettings,
+            spellData: spellData,
+            wandSprites: wandSprites,
+            initialGameName: gameName
+        }
     });
 };
 
@@ -53,4 +60,13 @@ window.Twitch.ext.onAuthorized(newAuth => {
 
 window.Twitch.ext.onError((err) => {
     log('TWITCH EXT ERROR', err);
+});
+
+window.Twitch.ext.onContext((context, changed) => {
+    if (changed.includes("game")) {
+        log('Context changed: ', changed, context);
+        gameName = context.game;
+        log('Game changed: ', gameName);
+        app.ports.gameChangedPort.send(context.game);
+    }
 });
