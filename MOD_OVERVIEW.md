@@ -1,4 +1,4 @@
-The extension is a simple hover overlay for Noita that gets its data from a game mod. In Noita, a streamer can build custom wands from an array of spells and effects. This overlay allows viewers to contents of the streamer's wands at all times.
+The extension is a simple hover overlay for Noita that gets its data from a game mod. In Noita, a streamer can build custom wands from an array of spells and effects. This overlay allows viewers to view contents of the streamer's wands at all times.
 
 The hover location is located in the top left of the player, near where the wands are located in the game UI. Hovering over a wand will show detailed information about the wand, including which spells are on the wands and the wand's stats.
 
